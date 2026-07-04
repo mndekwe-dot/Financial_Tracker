@@ -3,7 +3,7 @@
 set -o errexit
 
 cd frontend
-npm ci
+npm install --no-audit --no-fund
 npm run build
 cd ..
 
