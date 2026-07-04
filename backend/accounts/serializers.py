@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from categories.defaults import create_default_categories
+
 User = get_user_model()
 
 
@@ -19,8 +21,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'password']
 
     def create(self, validated_data):
-        return User.objects.create_user(
+        user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data.get('email', ''),
             password=validated_data['password'],
         )
+        create_default_categories(user)
+        return user

@@ -52,6 +52,16 @@ export default function Categories() {
     setForm(EMPTY_FORM);
   }
 
+  async function addDefaults() {
+    setError('');
+    try {
+      const { data } = await client.post('/categories/defaults/');
+      setCategories(data);
+    } catch {
+      setError('Could not add starter categories.');
+    }
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -108,7 +118,12 @@ export default function Categories() {
             </tr>
           ))}
           {categories.length === 0 && (
-            <tr><td colSpan={4}>No categories yet.</td></tr>
+            <tr>
+              <td colSpan={4}>
+                No categories yet.{' '}
+                <button type="button" onClick={addDefaults}>Add starter categories</button>
+              </td>
+            </tr>
           )}
         </tbody>
       </table>
