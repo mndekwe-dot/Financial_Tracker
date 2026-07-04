@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { DataRefreshProvider } from './context/DataRefreshContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import OfflineBanner from './components/OfflineBanner';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -19,6 +20,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <DataRefreshProvider>
+          <OfflineBanner />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />

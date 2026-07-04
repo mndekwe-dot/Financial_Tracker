@@ -16,9 +16,13 @@ export function AuthProvider({ children }) {
     client
       .get('/auth/me/')
       .then(({ data }) => setUser(data))
-      .catch(() => {
-        localStorage.removeItem('access');
-        localStorage.removeItem('refresh');
+      .catch((err) => {
+        // Only clear tokens when the server actually rejected them —
+        // a network error just means we're offline.
+        if (err.response) {
+          localStorage.removeItem('access');
+          localStorage.removeItem('refresh');
+        }
       })
       .finally(() => setLoading(false));
   }, []);

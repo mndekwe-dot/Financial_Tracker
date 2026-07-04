@@ -56,7 +56,9 @@ export default function Categories() {
     setError('');
     try {
       const { data } = await client.post('/categories/defaults/');
-      setCategories(data);
+      if (Array.isArray(data)) {
+        setCategories(data);
+      }
     } catch {
       setError('Could not add starter categories.');
     }

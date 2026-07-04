@@ -161,6 +161,21 @@ STORAGES = {
     },
 }
 
+
+def _whitenoise_headers(headers, path, url):
+    # The PWA service worker is served from /static/ but must control
+    # the whole site, and browsers should always revalidate it.
+    if url.endswith('/sw.js'):
+        headers['Service-Worker-Allowed'] = '/'
+        headers['Cache-Control'] = 'no-cache'
+
+
+WHITENOISE_ADD_HEADERS_FUNCTION = _whitenoise_headers
+
+WHITENOISE_MIMETYPES = {
+    '.webmanifest': 'application/manifest+json',
+}
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {

@@ -23,7 +23,9 @@ export default function WalletCard() {
   async function saveDepot(e) {
     e.preventDefault();
     const { data } = await client.patch('/wallet/', { starting_balance: value });
-    setWallet(data);
+    if (!data.queuedOffline) {
+      setWallet(data);
+    }
     setEditing(false);
   }
 
