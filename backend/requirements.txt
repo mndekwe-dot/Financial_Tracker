@@ -1,0 +1,14 @@
+asgiref==3.11.1
+Django==6.0.6
+django-cors-headers==4.9.0
+djangorestframework==3.17.1
+djangorestframework_simplejwt==5.5.1
+PyJWT==2.13.0
+sqlparse==0.5.5
+tzdata==2026.2
+
+# Production (Render + Neon Postgres)
+gunicorn>=23.0
+whitenoise>=6.8
+dj-database-url>=2.3
+psycopg[binary]>=3.2
