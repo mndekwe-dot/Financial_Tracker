@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Trash2 } from 'lucide-react';
+import { CheckCircle2, Pencil, Trash2 } from 'lucide-react';
 import client from '../api/client';
 import AmountInput from '../components/AmountInput';
 import { evaluateExpression } from '../utils/calc';
@@ -11,6 +11,7 @@ export default function Loans() {
   const [loans, setLoans] = useState([]);
   const [summary, setSummary] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
   const { version, bump } = useDataRefresh();
 
@@ -30,13 +31,36 @@ export default function Loans() {
       return;
     }
     try {
-      await client.post('/loans/', { ...form, amount });
+      if (editingId) {
+        await client.patch(`/loans/${editingId}/`, { ...form, amount });
+      } else {
+        await client.post('/loans/', { ...form, amount });
+      }
       setForm(EMPTY_FORM);
+      setEditingId(null);
       bump();
     } catch (err) {
       const data = err.response?.data;
       setError(data ? Object.values(data).flat().join(' ') : 'Save failed.');
     }
+  }
+
+  function handleEdit(loan) {
+    setEditingId(loan.id);
+    setForm({
+      person: loan.person,
+      amount: String(loan.amount),
+      direction: loan.direction,
+      date: loan.date,
+      note: loan.note || '',
+    });
+    setError('');
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setError('');
   }
 
   async function toggleSettled(loan) {
@@ -104,7 +128,8 @@ export default function Loans() {
           value={form.note}
           onChange={(e) => setForm({ ...form, note: e.target.value })}
         />
-        <button type="submit">Add</button>
+        <button type="submit">{editingId ? 'Update' : 'Add'}</button>
+        {editingId && <button type="button" className="secondary" onClick={cancelEdit}>Cancel</button>}
       </form>
 
       <table className="data-table">
@@ -131,6 +156,9 @@ export default function Loans() {
               </td>
               <td data-label="Date">{loan.date}</td>
               <td>
+                <button className="secondary" onClick={() => handleEdit(loan)} title="Edit">
+                  <Pencil size={16} />
+                </button>
                 <button className="secondary" onClick={() => toggleSettled(loan)} title="Toggle settled">
                   <CheckCircle2 size={16} />
                 </button>

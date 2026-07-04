@@ -10,6 +10,7 @@ import Categories from './pages/Categories';
 import Budgets from './pages/Budgets';
 import Weekly from './pages/Weekly';
 import Loans from './pages/Loans';
+import Reports from './pages/Reports';
 import More from './pages/More';
 import './App.css';
 
@@ -28,6 +29,7 @@ export default function App() {
               <Route path="/budgets" element={<Budgets />} />
               <Route path="/weekly" element={<Weekly />} />
               <Route path="/loans" element={<Loans />} />
+              <Route path="/reports" element={<Reports />} />
               <Route path="/more" element={<More />} />
             </Route>
           </Routes>
