@@ -12,6 +12,7 @@ import Budgets from './pages/Budgets';
 import Weekly from './pages/Weekly';
 import Loans from './pages/Loans';
 import Reports from './pages/Reports';
+import Shopping from './pages/Shopping';
 import More from './pages/More';
 import './App.css';
 
@@ -32,6 +33,7 @@ export default function App() {
               <Route path="/weekly" element={<Weekly />} />
               <Route path="/loans" element={<Loans />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/shopping" element={<Shopping />} />
               <Route path="/more" element={<More />} />
             </Route>
           </Routes>

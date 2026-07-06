@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'budgets',
     'loans',
     'wallet',
+    'shopping',
 ]
 
 MIDDLEWARE = [

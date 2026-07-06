@@ -10,6 +10,7 @@ urlpatterns = [
     path('api/budgets/', include('budgets.urls')),
     path('api/loans/', include('loans.urls')),
     path('api/wallet/', include('wallet.urls')),
+    path('api/shopping/', include('shopping.urls')),
     # Serve the built React app for every other route (client-side routing)
     re_path(r'^(?!api/|admin/|static/).*$', TemplateView.as_view(template_name='index.html')),
 ]
