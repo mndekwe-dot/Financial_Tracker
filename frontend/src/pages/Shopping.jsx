@@ -1,11 +1,67 @@
-import { useEffect, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus, Trash2, Upload, Download } from 'lucide-react';
 import client from '../api/client';
 import AmountInput from '../components/AmountInput';
 import { evaluateExpression } from '../utils/calc';
+import { downloadCsv, parseCsv } from '../utils/csv';
 import { useDataRefresh } from '../context/DataRefreshContext';
+import { useToast } from '../context/ToastContext';
 
 const EMPTY_ITEM = { name: '', unit_price: '', quantity: '1' };
+
+const CSV_HEADER = ['Item', 'Unit price', 'Quantity', 'Bought', 'Actual unit price', 'Actual quantity'];
+
+// Turn parsed CSV rows into shopping-item payloads. Tolerant of column order:
+// it reads a header row when present (any of the known names), otherwise falls
+// back to positional columns: name, unit price, quantity.
+function rowsToItems(rows) {
+  if (rows.length === 0) return [];
+  const header = rows[0].map((h) => h.trim().toLowerCase());
+  const col = (...names) => header.findIndex((h) => names.includes(h));
+  const nameCol = col('item', 'name', 'product');
+
+  let idx;
+  let dataRows;
+  if (nameCol !== -1) {
+    idx = {
+      name: nameCol,
+      price: col('unit price', 'planned unit price', 'price'),
+      qty: col('quantity', 'planned quantity', 'qty'),
+      bought: col('bought'),
+      actualPrice: col('actual unit price', 'actual price'),
+      actualQty: col('actual quantity', 'actual qty'),
+    };
+    dataRows = rows.slice(1);
+  } else {
+    idx = { name: 0, price: 1, qty: 2, bought: -1, actualPrice: -1, actualQty: -1 };
+    dataRows = rows;
+  }
+
+  const items = [];
+  for (const r of dataRows) {
+    const name = (r[idx.name] || '').trim();
+    if (!name) continue;
+    const price = Number(r[idx.price]);
+    const qty = idx.qty >= 0 ? Number(r[idx.qty]) : NaN;
+    const item = {
+      name,
+      planned_unit_price: Number.isFinite(price) && price >= 0 ? price : 0,
+      planned_quantity: Number.isFinite(qty) && qty > 0 ? qty : 1,
+    };
+    if (idx.bought >= 0) {
+      const flag = (r[idx.bought] || '').trim().toLowerCase();
+      if (['yes', 'true', '1', 'y', 'bought'].includes(flag)) {
+        item.bought = true;
+        const ap = Number(r[idx.actualPrice]);
+        const aq = Number(r[idx.actualQty]);
+        if (Number.isFinite(ap) && ap >= 0) item.actual_unit_price = ap;
+        if (Number.isFinite(aq) && aq > 0) item.actual_quantity = aq;
+      }
+    }
+    items.push(item);
+  }
+  return items;
+}
 
 // Editable cell for the shopping stage: saves on blur/Enter if the value changed.
 function ActualInput({ item, field, disabled, onSave }) {
@@ -36,7 +92,12 @@ export default function Shopping() {
   const [newListName, setNewListName] = useState('');
   const [itemForm, setItemForm] = useState(EMPTY_ITEM);
   const [error, setError] = useState('');
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [importState, setImportState] = useState(null); // { items, fileName, target: 'current'|'new', newName }
+  const [busy, setBusy] = useState(false);
+  const fileInputRef = useRef(null);
   const { version, bump } = useDataRefresh();
+  const toast = useToast();
 
   function load() {
     client.get('/shopping/lists/').then(({ data }) => {
@@ -58,8 +119,10 @@ export default function Shopping() {
       setNewListName('');
       if (data?.id) setActiveId(data.id);
       bump();
+      toast('List created.');
     } catch {
       setError('Could not create the list.');
+      toast('Could not create the list.', 'error');
     }
   }
 
@@ -67,6 +130,7 @@ export default function Shopping() {
     if (!confirm('Delete this shopping list and all its items?')) return;
     await client.delete(`/shopping/lists/${id}/`);
     bump();
+    toast('List deleted.', 'info');
   }
 
   async function addItem(e) {
@@ -82,6 +146,7 @@ export default function Shopping() {
       setError('Enter a valid quantity.');
       return;
     }
+    setBusy(true);
     try {
       await client.post('/shopping/items/', {
         shopping_list: active.id,
@@ -90,10 +155,14 @@ export default function Shopping() {
         planned_quantity: qty,
       });
       setItemForm(EMPTY_ITEM);
+      setShowAddItem(false);
       bump();
+      toast('Item added.');
     } catch (err) {
       const data = err.response?.data;
       setError(data ? Object.values(data).flat().join(' ') : 'Save failed.');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -118,6 +187,77 @@ export default function Shopping() {
   async function deleteItem(id) {
     await client.delete(`/shopping/items/${id}/`);
     bump();
+    toast('Item removed.', 'info');
+  }
+
+  function exportCsv() {
+    if (!active) return;
+    const rows = [CSV_HEADER];
+    for (const item of active.items) {
+      rows.push([
+        item.name,
+        Number(item.planned_unit_price).toFixed(2),
+        Number(item.planned_quantity),
+        item.bought ? 'Yes' : 'No',
+        item.bought && item.actual_unit_price != null ? Number(item.actual_unit_price).toFixed(2) : '',
+        item.bought && item.actual_quantity != null ? Number(item.actual_quantity) : '',
+      ]);
+    }
+    const safeName = active.name.replace(/[^\w-]+/g, '-').toLowerCase();
+    downloadCsv(`shopping-${safeName || 'list'}.csv`, rows);
+    toast('Shopping list exported.');
+  }
+
+  function pickFile() {
+    fileInputRef.current?.click();
+  }
+
+  async function onFileChosen(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file later
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const items = rowsToItems(parseCsv(text));
+      if (items.length === 0) {
+        toast('No items found in that file.', 'error');
+        return;
+      }
+      const base = file.name.replace(/\.csv$/i, '');
+      setImportState({
+        items,
+        fileName: file.name,
+        target: active ? 'current' : 'new',
+        newName: base || 'Imported list',
+      });
+    } catch {
+      toast('Could not read that file.', 'error');
+    }
+  }
+
+  async function confirmImport() {
+    if (!importState) return;
+    const { items, target, newName } = importState;
+    if (target === 'new' && !newName.trim()) return;
+    setBusy(true);
+    try {
+      let listId = active?.id;
+      if (target === 'new') {
+        const { data } = await client.post('/shopping/lists/', { name: newName.trim() });
+        listId = data.id;
+      }
+      await Promise.all(
+        items.map((it) => client.post('/shopping/items/', { ...it, shopping_list: listId })),
+      );
+      if (listId) setActiveId(listId);
+      setImportState(null);
+      bump();
+      toast(`Imported ${items.length} item${items.length === 1 ? '' : 's'}.`);
+    } catch {
+      toast('Import failed. Check the file and try again.', 'error');
+    } finally {
+      setBusy(false);
+    }
   }
 
   const boughtCount = active ? active.items.filter((i) => i.bought).length : 0;
@@ -151,11 +291,21 @@ export default function Shopping() {
             <Trash2 size={15} />
           </button>
         )}
+        <button type="button" className="secondary" onClick={pickFile} title="Import a CSV file">
+          <Upload size={15} style={{ verticalAlign: -2 }} /> Import CSV
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv,text/csv"
+          style={{ display: 'none' }}
+          onChange={onFileChosen}
+        />
       </form>
 
-      {error && <p className="error">{error}</p>}
+      {error && !showAddItem && <p className="error">{error}</p>}
 
-      {!active && <p>No shopping lists yet — create one above to start planning.</p>}
+      {!active && <p>No shopping lists yet — create one above, or import a CSV to start.</p>}
 
       {active && (
         <>
@@ -177,30 +327,14 @@ export default function Shopping() {
             </div>
           </div>
 
-          <form className="inline-form" onSubmit={addItem}>
-            <input
-              placeholder="Item (e.g. Rice 5kg)"
-              value={itemForm.name}
-              onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
-              required
-            />
-            <AmountInput
-              value={itemForm.unit_price}
-              onChange={(unit_price) => setItemForm({ ...itemForm, unit_price })}
-              required
-            />
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              style={{ width: 90 }}
-              placeholder="Qty"
-              value={itemForm.quantity}
-              onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })}
-              required
-            />
-            <button type="submit">Add item</button>
-          </form>
+          <div className="table-toolbar">
+            <button type="button" onClick={() => { setError(''); setItemForm(EMPTY_ITEM); setShowAddItem(true); }}>
+              <Plus size={15} style={{ verticalAlign: -2 }} /> Add item
+            </button>
+            <button type="button" className="secondary" onClick={exportCsv} disabled={active.items.length === 0}>
+              <Download size={15} style={{ verticalAlign: -2 }} /> Export CSV
+            </button>
+          </div>
 
           <table className="data-table">
             <thead>
@@ -259,6 +393,96 @@ export default function Shopping() {
             </tbody>
           </table>
         </>
+      )}
+
+      {showAddItem && (
+        <div className="modal-backdrop" onClick={() => setShowAddItem(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Add item</h2>
+            <form className="modal-form" onSubmit={addItem}>
+              {error && <p className="error">{error}</p>}
+              <input
+                placeholder="Item (e.g. Rice 5kg)"
+                value={itemForm.name}
+                onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
+                autoFocus
+                required
+              />
+              <AmountInput
+                value={itemForm.unit_price}
+                onChange={(unit_price) => setItemForm({ ...itemForm, unit_price })}
+                required
+              />
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="Quantity"
+                value={itemForm.quantity}
+                onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })}
+                required
+              />
+              <div className="modal-actions">
+                <button type="button" className="secondary" onClick={() => setShowAddItem(false)}>Cancel</button>
+                <button type="submit" disabled={busy}>{busy ? 'Adding…' : 'Add item'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {importState && (
+        <div className="modal-backdrop" onClick={() => !busy && setImportState(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Import shopping list</h2>
+            <div className="modal-form">
+              <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                Found <strong>{importState.items.length}</strong> item
+                {importState.items.length === 1 ? '' : 's'} in <strong>{importState.fileName}</strong>.
+              </p>
+              <ul className="import-preview">
+                {importState.items.slice(0, 5).map((it, i) => (
+                  <li key={i}>{it.name} — {Number(it.planned_unit_price).toFixed(2)} × {it.planned_quantity}</li>
+                ))}
+                {importState.items.length > 5 && <li>…and {importState.items.length - 5} more</li>}
+              </ul>
+
+              <label className="import-choice">
+                <input
+                  type="radio"
+                  name="import-target"
+                  checked={importState.target === 'current'}
+                  disabled={!active}
+                  onChange={() => setImportState({ ...importState, target: 'current' })}
+                />
+                Add to current list{active ? ` (${active.name})` : ' (no list yet)'}
+              </label>
+              <label className="import-choice">
+                <input
+                  type="radio"
+                  name="import-target"
+                  checked={importState.target === 'new'}
+                  onChange={() => setImportState({ ...importState, target: 'new' })}
+                />
+                Create a new list
+              </label>
+              {importState.target === 'new' && (
+                <input
+                  placeholder="New list name"
+                  value={importState.newName}
+                  onChange={(e) => setImportState({ ...importState, newName: e.target.value })}
+                />
+              )}
+
+              <div className="modal-actions">
+                <button type="button" className="secondary" onClick={() => setImportState(null)} disabled={busy}>Cancel</button>
+                <button type="button" onClick={confirmImport} disabled={busy}>
+                  {busy ? 'Importing…' : `Import ${importState.items.length} item${importState.items.length === 1 ? '' : 's'}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

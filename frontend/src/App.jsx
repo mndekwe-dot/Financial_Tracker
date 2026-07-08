@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { DataRefreshProvider } from './context/DataRefreshContext';
+import { ToastProvider } from './context/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import OfflineBanner from './components/OfflineBanner';
 import Login from './pages/Login';
@@ -21,22 +22,24 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <DataRefreshProvider>
-          <OfflineBanner />
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/transactions" element={<Transactions />} />
-              <Route path="/categories" element={<Categories />} />
-              <Route path="/budgets" element={<Budgets />} />
-              <Route path="/weekly" element={<Weekly />} />
-              <Route path="/loans" element={<Loans />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/shopping" element={<Shopping />} />
-              <Route path="/more" element={<More />} />
-            </Route>
-          </Routes>
+          <ToastProvider>
+            <OfflineBanner />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route element={<ProtectedRoute />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/transactions" element={<Transactions />} />
+                <Route path="/categories" element={<Categories />} />
+                <Route path="/budgets" element={<Budgets />} />
+                <Route path="/weekly" element={<Weekly />} />
+                <Route path="/loans" element={<Loans />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/shopping" element={<Shopping />} />
+                <Route path="/more" element={<More />} />
+              </Route>
+            </Routes>
+          </ToastProvider>
         </DataRefreshProvider>
       </AuthProvider>
     </BrowserRouter>
