@@ -1,6 +1,7 @@
 import { parseCsv } from './csv';
 
 const ITEM_NAMES = ['item', 'name', 'product', 'description'];
+const CATEGORY_NAMES = ['category', 'group', 'section', 'aisle'];
 const QTY_NAMES = ['quantity', 'qty', 'planned quantity'];
 const PRICE_NAMES = ['unit price', 'planned unit price', 'price', 'unit cost'];
 const TOTAL_NAMES = ['total price', 'total', 'amount', 'total cost'];
@@ -54,10 +55,11 @@ export function rowsToItems(rows) {
   rows[headerIdx].forEach((cell, i) => {
     const name = lower(cell);
     if (ITEM_NAMES.includes(name)) {
-      block = { item: i, qty: -1, price: -1, total: -1, bought: -1, aprice: -1, aqty: -1 };
+      block = { item: i, category: -1, qty: -1, price: -1, total: -1, bought: -1, aprice: -1, aqty: -1 };
       blocks.push(block);
     } else if (block) {
-      if (block.qty === -1 && QTY_NAMES.includes(name)) block.qty = i;
+      if (block.category === -1 && CATEGORY_NAMES.includes(name)) block.category = i;
+      else if (block.qty === -1 && QTY_NAMES.includes(name)) block.qty = i;
       else if (block.price === -1 && PRICE_NAMES.includes(name)) block.price = i;
       else if (block.total === -1 && TOTAL_NAMES.includes(name)) block.total = i;
       else if (block.bought === -1 && BOUGHT_NAMES.includes(name)) block.bought = i;
@@ -85,6 +87,7 @@ export function rowsToItems(rows) {
 
       const item = {
         name,
+        category: b.category >= 0 ? String(row[b.category] ?? '').trim() : '',
         planned_unit_price: Number.isFinite(price) && price >= 0 ? Number(price.toFixed(2)) : 0,
         planned_quantity: Number.isFinite(qty) && qty > 0 ? qty : 1,
       };

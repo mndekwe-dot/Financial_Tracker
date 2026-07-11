@@ -8,7 +8,7 @@ import { parseShoppingItems } from '../utils/shoppingImport';
 import { useDataRefresh } from '../context/DataRefreshContext';
 import { useToast } from '../context/ToastContext';
 
-const EMPTY_ITEM = { name: '', unit_price: '', quantity: '1' };
+const EMPTY_ITEM = { name: '', category: '', unit_price: '', quantity: '1' };
 
 function ShoppingSkeleton() {
   return (
@@ -33,7 +33,9 @@ function ShoppingSkeleton() {
   );
 }
 
-const CSV_HEADER = ['Item', 'Unit price', 'Quantity', 'Bought', 'Actual unit price', 'Actual quantity'];
+const CSV_HEADER = ['Item', 'Category', 'Unit price', 'Quantity', 'Bought', 'Actual unit price', 'Actual quantity'];
+
+const UNCATEGORIZED = 'Uncategorized';
 
 // Editable cell for the shopping stage: saves on blur/Enter if the value changed.
 function ActualInput({ item, field, disabled, onSave }) {
@@ -68,6 +70,8 @@ export default function Shopping() {
   const [importState, setImportState] = useState(null); // { items, fileName, target: 'current'|'new', newName }
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'bought'
+  const [categoryFilter, setCategoryFilter] = useState(''); // '' = all categories
   const fileInputRef = useRef(null);
   const { version, bump } = useDataRefresh();
   const toast = useToast();
@@ -126,6 +130,7 @@ export default function Shopping() {
       await client.post('/shopping/items/', {
         shopping_list: active.id,
         name: itemForm.name,
+        category: itemForm.category.trim(),
         planned_unit_price: price,
         planned_quantity: qty,
       });
@@ -171,6 +176,7 @@ export default function Shopping() {
     for (const item of active.items) {
       rows.push([
         item.name,
+        item.category || '',
         Number(item.planned_unit_price).toFixed(2),
         Number(item.planned_quantity),
         item.bought ? 'Yes' : 'No',
@@ -235,16 +241,30 @@ export default function Shopping() {
     }
   }
 
-  const boughtItems = active ? active.items.filter((i) => i.bought) : [];
-  const remainingItems = active ? active.items.filter((i) => !i.bought) : [];
-  const boughtCount = boughtItems.length;
+  const allItems = active ? active.items : [];
+  const boughtCount = allItems.filter((i) => i.bought).length;
   const change = active ? Number(active.change) : 0;
+
+  // Distinct categories present in the active list, for the category filter.
+  const categories = [...new Set(allItems.map((i) => (i.category || '').trim() || UNCATEGORIZED))].sort();
+
+  // Items narrowed by the category filter, then split into pending/bought.
+  const itemCategory = (i) => (i.category || '').trim() || UNCATEGORIZED;
+  const filtered = categoryFilter
+    ? allItems.filter((i) => itemCategory(i) === categoryFilter)
+    : allItems;
+  const remainingItems = filtered.filter((i) => !i.bought);
+  const boughtItems = filtered.filter((i) => i.bought);
+
+  const showPending = statusFilter === 'all' || statusFilter === 'pending';
+  const showBought = statusFilter === 'all' || statusFilter === 'bought';
 
   function renderRow(item) {
     const diff = item.bought ? Number(item.actual_total) - Number(item.planned_total) : null;
     return (
       <tr key={item.id} style={{ opacity: item.bought ? 0.85 : 1 }}>
         <td data-label="Item">{item.name}</td>
+        <td data-label="Category">{item.category || <span className="muted">—</span>}</td>
         <td data-label="Unit price">{Number(item.planned_unit_price).toFixed(2)}</td>
         <td data-label="Qty">{Number(item.planned_quantity)}</td>
         <td data-label="Total">{Number(item.planned_total).toFixed(2)}</td>
@@ -284,6 +304,7 @@ export default function Shopping() {
           <thead>
             <tr>
               <th>Item</th>
+              <th>Category</th>
               <th>Unit price</th>
               <th>Qty</th>
               <th>Total</th>
@@ -298,7 +319,7 @@ export default function Shopping() {
           <tbody>
             {rows.map(renderRow)}
             {rows.length === 0 && (
-              <tr><td colSpan={10}>{emptyText}</td></tr>
+              <tr><td colSpan={11}>{emptyText}</td></tr>
             )}
           </tbody>
         </table>
@@ -381,6 +402,43 @@ export default function Shopping() {
             </button>
           </div>
 
+          {active.items.length > 0 && (
+            <div className="shopping-filters">
+              <div className="filter-pills" role="group" aria-label="Filter by status">
+                <button
+                  type="button"
+                  className={statusFilter === 'all' ? 'pill active' : 'pill'}
+                  onClick={() => setStatusFilter('all')}
+                >
+                  All ({filtered.length})
+                </button>
+                <button
+                  type="button"
+                  className={statusFilter === 'pending' ? 'pill active' : 'pill'}
+                  onClick={() => setStatusFilter('pending')}
+                >
+                  Pending ({remainingItems.length})
+                </button>
+                <button
+                  type="button"
+                  className={statusFilter === 'bought' ? 'pill active' : 'pill'}
+                  onClick={() => setStatusFilter('bought')}
+                >
+                  Bought ({boughtItems.length})
+                </button>
+              </div>
+              <label className="filter-category">
+                Category:
+                <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                  <option value="">All categories</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+
           {active.items.length === 0 ? (
             <table className="data-table">
               <tbody>
@@ -389,8 +447,8 @@ export default function Shopping() {
             </table>
           ) : (
             <>
-              {renderSection('Remaining', remainingItems, 'Nothing left — everything is bought.')}
-              {renderSection('Bought', boughtItems, 'Nothing bought yet — check items off as you shop.')}
+              {showPending && renderSection('Remaining', remainingItems, 'Nothing left — everything is bought.')}
+              {showBought && renderSection('Bought', boughtItems, 'Nothing bought yet — check items off as you shop.')}
             </>
           )}
         </>
@@ -409,6 +467,17 @@ export default function Shopping() {
                 autoFocus
                 required
               />
+              <input
+                placeholder="Category (optional, e.g. Groceries)"
+                value={itemForm.category}
+                onChange={(e) => setItemForm({ ...itemForm, category: e.target.value })}
+                list="shopping-categories"
+              />
+              <datalist id="shopping-categories">
+                {categories.filter((c) => c !== UNCATEGORIZED).map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
               <AmountInput
                 value={itemForm.unit_price}
                 onChange={(unit_price) => setItemForm({ ...itemForm, unit_price })}

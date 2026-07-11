@@ -999,6 +999,52 @@
   margin-top: 0.4rem;
 }
 
+/* Shopping filters */
+.shopping-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filter-pills {
+  display: inline-flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.filter-pills .pill {
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--border, #d0d5dd);
+  background: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.filter-pills .pill.active {
+  background: var(--accent, #2563eb);
+  border-color: var(--accent, #2563eb);
+  color: #fff;
+}
+
+.filter-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.filter-category select {
+  padding: 0.3rem 0.5rem;
+}
+
+td .muted {
+  opacity: 0.5;
+}
+
 /* Loading skeleton */
 .skeleton-bar {
   display: block;

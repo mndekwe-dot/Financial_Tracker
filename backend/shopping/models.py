@@ -17,6 +17,7 @@ class ShoppingList(models.Model):
 class ShoppingItem(models.Model):
     shopping_list = models.ForeignKey(ShoppingList, on_delete=models.CASCADE, related_name='items')
     name = models.CharField(max_length=120)
+    category = models.CharField(max_length=60, blank=True, default='')
     planned_unit_price = models.DecimalField(max_digits=12, decimal_places=2)
     planned_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=1)
     bought = models.BooleanField(default=False)

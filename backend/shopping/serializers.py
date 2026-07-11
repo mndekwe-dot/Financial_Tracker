@@ -12,7 +12,7 @@ class ShoppingItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShoppingItem
         fields = [
-            'id', 'shopping_list', 'name',
+            'id', 'shopping_list', 'name', 'category',
             'planned_unit_price', 'planned_quantity', 'planned_total',
             'bought', 'actual_unit_price', 'actual_quantity', 'actual_total',
             'created_at',
