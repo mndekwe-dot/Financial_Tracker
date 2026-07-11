@@ -990,6 +990,15 @@
   margin-bottom: 0.9rem;
 }
 
+.shopping-section-title {
+  font-size: 1.05rem;
+  margin: 1.4rem 0 0.6rem;
+}
+
+.shopping-section-title:first-of-type {
+  margin-top: 0.4rem;
+}
+
 /* Import preview + choices (Shopping import modal) */
 .import-preview {
   margin: 0;

@@ -209,8 +209,76 @@ export default function Shopping() {
     }
   }
 
-  const boughtCount = active ? active.items.filter((i) => i.bought).length : 0;
+  const boughtItems = active ? active.items.filter((i) => i.bought) : [];
+  const remainingItems = active ? active.items.filter((i) => !i.bought) : [];
+  const boughtCount = boughtItems.length;
   const change = active ? Number(active.change) : 0;
+
+  function renderRow(item) {
+    const diff = item.bought ? Number(item.actual_total) - Number(item.planned_total) : null;
+    return (
+      <tr key={item.id} style={{ opacity: item.bought ? 0.85 : 1 }}>
+        <td data-label="Item">{item.name}</td>
+        <td data-label="Unit price">{Number(item.planned_unit_price).toFixed(2)}</td>
+        <td data-label="Qty">{Number(item.planned_quantity)}</td>
+        <td data-label="Total">{Number(item.planned_total).toFixed(2)}</td>
+        <td data-label="Bought">
+          <input
+            type="checkbox"
+            checked={item.bought}
+            onChange={() => toggleBought(item)}
+          />
+        </td>
+        <td data-label="Actual price">
+          <ActualInput item={item} field="actual_unit_price" disabled={!item.bought} onSave={patchItem} />
+        </td>
+        <td data-label="Actual qty">
+          <ActualInput item={item} field="actual_quantity" disabled={!item.bought} onSave={patchItem} />
+        </td>
+        <td data-label="New total">
+          {item.bought ? Number(item.actual_total).toFixed(2) : '—'}
+        </td>
+        <td data-label="Diff" className={diff > 0 ? 'amount-expense' : diff < 0 ? 'amount-income' : ''}>
+          {diff === null ? '—' : `${diff > 0 ? '+' : ''}${diff.toFixed(2)}`}
+        </td>
+        <td>
+          <button className="secondary" onClick={() => deleteItem(item.id)} title="Remove item">
+            <Trash2 size={16} />
+          </button>
+        </td>
+      </tr>
+    );
+  }
+
+  function renderSection(title, rows, emptyText) {
+    return (
+      <>
+        <h2 className="shopping-section-title">{title} ({rows.length})</h2>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Unit price</th>
+              <th>Qty</th>
+              <th>Total</th>
+              <th>Bought</th>
+              <th>Actual price</th>
+              <th>Actual qty</th>
+              <th>New total</th>
+              <th>Diff</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(renderRow)}
+            {rows.length === 0 && (
+              <tr><td colSpan={10}>{emptyText}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </>
+    );
+  }
 
   return (
     <div>
@@ -285,62 +353,18 @@ export default function Shopping() {
             </button>
           </div>
 
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Unit price</th>
-                <th>Qty</th>
-                <th>Total</th>
-                <th>Bought</th>
-                <th>Actual price</th>
-                <th>Actual qty</th>
-                <th>New total</th>
-                <th>Diff</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {active.items.map((item) => {
-                const diff = item.bought ? Number(item.actual_total) - Number(item.planned_total) : null;
-                return (
-                  <tr key={item.id} style={{ opacity: item.bought ? 0.85 : 1 }}>
-                    <td data-label="Item">{item.name}</td>
-                    <td data-label="Unit price">{Number(item.planned_unit_price).toFixed(2)}</td>
-                    <td data-label="Qty">{Number(item.planned_quantity)}</td>
-                    <td data-label="Total">{Number(item.planned_total).toFixed(2)}</td>
-                    <td data-label="Bought">
-                      <input
-                        type="checkbox"
-                        checked={item.bought}
-                        onChange={() => toggleBought(item)}
-                      />
-                    </td>
-                    <td data-label="Actual price">
-                      <ActualInput item={item} field="actual_unit_price" disabled={!item.bought} onSave={patchItem} />
-                    </td>
-                    <td data-label="Actual qty">
-                      <ActualInput item={item} field="actual_quantity" disabled={!item.bought} onSave={patchItem} />
-                    </td>
-                    <td data-label="New total">
-                      {item.bought ? Number(item.actual_total).toFixed(2) : '—'}
-                    </td>
-                    <td data-label="Diff" className={diff > 0 ? 'amount-expense' : diff < 0 ? 'amount-income' : ''}>
-                      {diff === null ? '—' : `${diff > 0 ? '+' : ''}${diff.toFixed(2)}`}
-                    </td>
-                    <td>
-                      <button className="secondary" onClick={() => deleteItem(item.id)} title="Remove item">
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {active.items.length === 0 && (
-                <tr><td colSpan={10}>No items yet — add what you plan to buy.</td></tr>
-              )}
-            </tbody>
-          </table>
+          {active.items.length === 0 ? (
+            <table className="data-table">
+              <tbody>
+                <tr><td>No items yet — add what you plan to buy.</td></tr>
+              </tbody>
+            </table>
+          ) : (
+            <>
+              {renderSection('Remaining', remainingItems, 'Nothing left — everything is bought.')}
+              {renderSection('Bought', boughtItems, 'Nothing bought yet — check items off as you shop.')}
+            </>
+          )}
         </>
       )}
 
