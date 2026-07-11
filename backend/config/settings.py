@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'loans',
     'wallet',
     'shopping',
+    'momo',
 ]
 
 MIDDLEWARE = [

@@ -3,65 +3,14 @@ import { Plus, Trash2, Upload, Download } from 'lucide-react';
 import client from '../api/client';
 import AmountInput from '../components/AmountInput';
 import { evaluateExpression } from '../utils/calc';
-import { downloadCsv, parseCsv } from '../utils/csv';
+import { downloadCsv } from '../utils/csv';
+import { parseShoppingItems } from '../utils/shoppingImport';
 import { useDataRefresh } from '../context/DataRefreshContext';
 import { useToast } from '../context/ToastContext';
 
 const EMPTY_ITEM = { name: '', unit_price: '', quantity: '1' };
 
 const CSV_HEADER = ['Item', 'Unit price', 'Quantity', 'Bought', 'Actual unit price', 'Actual quantity'];
-
-// Turn parsed CSV rows into shopping-item payloads. Tolerant of column order:
-// it reads a header row when present (any of the known names), otherwise falls
-// back to positional columns: name, unit price, quantity.
-function rowsToItems(rows) {
-  if (rows.length === 0) return [];
-  const header = rows[0].map((h) => h.trim().toLowerCase());
-  const col = (...names) => header.findIndex((h) => names.includes(h));
-  const nameCol = col('item', 'name', 'product');
-
-  let idx;
-  let dataRows;
-  if (nameCol !== -1) {
-    idx = {
-      name: nameCol,
-      price: col('unit price', 'planned unit price', 'price'),
-      qty: col('quantity', 'planned quantity', 'qty'),
-      bought: col('bought'),
-      actualPrice: col('actual unit price', 'actual price'),
-      actualQty: col('actual quantity', 'actual qty'),
-    };
-    dataRows = rows.slice(1);
-  } else {
-    idx = { name: 0, price: 1, qty: 2, bought: -1, actualPrice: -1, actualQty: -1 };
-    dataRows = rows;
-  }
-
-  const items = [];
-  for (const r of dataRows) {
-    const name = (r[idx.name] || '').trim();
-    if (!name) continue;
-    const price = Number(r[idx.price]);
-    const qty = idx.qty >= 0 ? Number(r[idx.qty]) : NaN;
-    const item = {
-      name,
-      planned_unit_price: Number.isFinite(price) && price >= 0 ? price : 0,
-      planned_quantity: Number.isFinite(qty) && qty > 0 ? qty : 1,
-    };
-    if (idx.bought >= 0) {
-      const flag = (r[idx.bought] || '').trim().toLowerCase();
-      if (['yes', 'true', '1', 'y', 'bought'].includes(flag)) {
-        item.bought = true;
-        const ap = Number(r[idx.actualPrice]);
-        const aq = Number(r[idx.actualQty]);
-        if (Number.isFinite(ap) && ap >= 0) item.actual_unit_price = ap;
-        if (Number.isFinite(aq) && aq > 0) item.actual_quantity = aq;
-      }
-    }
-    items.push(item);
-  }
-  return items;
-}
 
 // Editable cell for the shopping stage: saves on blur/Enter if the value changed.
 function ActualInput({ item, field, disabled, onSave }) {
@@ -218,7 +167,7 @@ export default function Shopping() {
     if (!file) return;
     try {
       const text = await file.text();
-      const items = rowsToItems(parseCsv(text));
+      const items = parseShoppingItems(text);
       if (items.length === 0) {
         toast('No items found in that file.', 'error');
         return;

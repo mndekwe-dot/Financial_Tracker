@@ -14,6 +14,8 @@ import Weekly from './pages/Weekly';
 import Loans from './pages/Loans';
 import Reports from './pages/Reports';
 import Shopping from './pages/Shopping';
+import MomoSetup from './pages/MomoSetup';
+import Pay from './pages/Pay';
 import More from './pages/More';
 import './App.css';
 
@@ -36,6 +38,8 @@ export default function App() {
                 <Route path="/loans" element={<Loans />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/shopping" element={<Shopping />} />
+                <Route path="/momo" element={<MomoSetup />} />
+                <Route path="/pay" element={<Pay />} />
                 <Route path="/more" element={<More />} />
               </Route>
             </Routes>
