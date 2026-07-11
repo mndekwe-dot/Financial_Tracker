@@ -10,6 +10,29 @@ import { useToast } from '../context/ToastContext';
 
 const EMPTY_ITEM = { name: '', unit_price: '', quantity: '1' };
 
+function ShoppingSkeleton() {
+  return (
+    <div className="shopping-skeleton" aria-hidden="true">
+      <div className="loan-summary-cards">
+        <div className="summary-card"><span className="skeleton-bar skeleton-bar--sm" /><span className="skeleton-bar skeleton-bar--lg" /></div>
+        <div className="summary-card"><span className="skeleton-bar skeleton-bar--sm" /><span className="skeleton-bar skeleton-bar--lg" /></div>
+        <div className="summary-card"><span className="skeleton-bar skeleton-bar--sm" /><span className="skeleton-bar skeleton-bar--lg" /></div>
+      </div>
+      <span className="skeleton-bar skeleton-title" />
+      <div className="skeleton-table">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="skeleton-row">
+            <span className="skeleton-bar" style={{ flex: 3 }} />
+            <span className="skeleton-bar" style={{ flex: 1 }} />
+            <span className="skeleton-bar" style={{ flex: 1 }} />
+            <span className="skeleton-bar" style={{ flex: 1 }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const CSV_HEADER = ['Item', 'Unit price', 'Quantity', 'Bought', 'Actual unit price', 'Actual quantity'];
 
 // Editable cell for the shopping stage: saves on blur/Enter if the value changed.
@@ -44,15 +67,18 @@ export default function Shopping() {
   const [showAddItem, setShowAddItem] = useState(false);
   const [importState, setImportState] = useState(null); // { items, fileName, target: 'current'|'new', newName }
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const fileInputRef = useRef(null);
   const { version, bump } = useDataRefresh();
   const toast = useToast();
 
   function load() {
-    client.get('/shopping/lists/').then(({ data }) => {
-      setLists(data);
-      setActiveId((current) => (data.some((l) => l.id === current) ? current : (data[0]?.id ?? null)));
-    });
+    client.get('/shopping/lists/')
+      .then(({ data }) => {
+        setLists(data);
+        setActiveId((current) => (data.some((l) => l.id === current) ? current : (data[0]?.id ?? null)));
+      })
+      .finally(() => setLoading(false));
   }
 
   useEffect(load, [version]);
@@ -322,9 +348,11 @@ export default function Shopping() {
 
       {error && !showAddItem && <p className="error">{error}</p>}
 
-      {!active && <p>No shopping lists yet — create one above, or import a CSV to start.</p>}
+      {loading && <ShoppingSkeleton />}
 
-      {active && (
+      {!loading && !active && <p>No shopping lists yet — create one above, or import a CSV to start.</p>}
+
+      {!loading && active && (
         <>
           <div className="loan-summary-cards">
             <div className="summary-card balance">
