@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'goals',
     'recurring',
     'moneyaccounts',
+    'ussd',
 ]
 
 MIDDLEWARE = [

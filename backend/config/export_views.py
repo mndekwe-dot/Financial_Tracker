@@ -17,6 +17,7 @@ from moneyaccounts.models import Account, Transfer
 from recurring.models import RecurringTransaction
 from shopping.models import ShoppingList
 from transactions.models import Transaction
+from ussd.models import UssdCode
 from wallet.models import Wallet
 
 
@@ -206,6 +207,10 @@ def export_data(request):
         'transfers': [
             _serialize_transfer(t)
             for t in Transfer.objects.filter(user=user)
+        ],
+        'ussd_codes': [
+            {'id': u.id, 'service': u.service, 'label': u.label, 'code': u.code, 'created_at': _dec(u.created_at)}
+            for u in UssdCode.objects.filter(user=user)
         ],
         'wallet': _serialize_wallet(wallet),
     }

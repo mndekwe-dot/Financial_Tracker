@@ -1,6 +1,44 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Tags, HandCoins, FileDown, ShoppingCart, Smartphone, Send, LogOut, Wallet, Target, Repeat, Landmark, Settings as SettingsIcon } from 'lucide-react';
+import {
+  Tags, HandCoins, FileDown, ShoppingCart, Smartphone, Send, LogOut,
+  Wallet, Target, Repeat, Landmark, Settings as SettingsIcon,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+
+// More-page links grouped by what they're for.
+const GROUPS = [
+  {
+    title: 'Money & payments',
+    links: [
+      { to: '/accounts', label: 'Accounts', Icon: Landmark },
+      { to: '/topup', label: 'Top up', Icon: Wallet },
+      { to: '/pay', label: 'Pay with MoMo', Icon: Send },
+      { to: '/momo', label: 'MoMo auto-capture', Icon: Smartphone },
+    ],
+  },
+  {
+    title: 'Planning',
+    links: [
+      { to: '/goals', label: 'Savings goals', Icon: Target },
+      { to: '/recurring', label: 'Recurring', Icon: Repeat },
+      { to: '/loans', label: 'Loans', Icon: HandCoins },
+    ],
+  },
+  {
+    title: 'Lists & insights',
+    links: [
+      { to: '/shopping', label: 'Shopping', Icon: ShoppingCart },
+      { to: '/categories', label: 'Categories', Icon: Tags },
+      { to: '/reports', label: 'Reports', Icon: FileDown },
+    ],
+  },
+  {
+    title: 'Account',
+    links: [
+      { to: '/settings', label: 'Settings', Icon: SettingsIcon },
+    ],
+  },
+];
 
 export default function More() {
   const { logout } = useAuth();
@@ -16,56 +54,26 @@ export default function More() {
       <div className="page-header">
         <h1>More</h1>
       </div>
-      <div className="more-grid">
-        <Link to="/accounts" className="more-card">
-          <span className="more-icon"><Landmark size={22} /></span>
-          Accounts
-        </Link>
-        <Link to="/topup" className="more-card">
-          <span className="more-icon"><Wallet size={22} /></span>
-          Top up
-        </Link>
-        <Link to="/goals" className="more-card">
-          <span className="more-icon"><Target size={22} /></span>
-          Savings goals
-        </Link>
-        <Link to="/recurring" className="more-card">
-          <span className="more-icon"><Repeat size={22} /></span>
-          Recurring
-        </Link>
-        <Link to="/pay" className="more-card">
-          <span className="more-icon"><Send size={22} /></span>
-          Pay with MoMo
-        </Link>
-        <Link to="/categories" className="more-card">
-          <span className="more-icon"><Tags size={22} /></span>
-          Categories
-        </Link>
-        <Link to="/loans" className="more-card">
-          <span className="more-icon"><HandCoins size={22} /></span>
-          Loans
-        </Link>
-        <Link to="/shopping" className="more-card">
-          <span className="more-icon"><ShoppingCart size={22} /></span>
-          Shopping
-        </Link>
-        <Link to="/reports" className="more-card">
-          <span className="more-icon"><FileDown size={22} /></span>
-          Reports
-        </Link>
-        <Link to="/momo" className="more-card">
-          <span className="more-icon"><Smartphone size={22} /></span>
-          MoMo auto-capture
-        </Link>
-        <Link to="/settings" className="more-card">
-          <span className="more-icon"><SettingsIcon size={22} /></span>
-          Settings
-        </Link>
-        <button type="button" className="more-card logout" onClick={handleLogout}>
-          <span className="more-icon"><LogOut size={22} /></span>
-          Log out
-        </button>
-      </div>
+
+      {GROUPS.map((group) => (
+        <section key={group.title} className="more-section">
+          <h2 className="more-section-title">{group.title}</h2>
+          <div className="more-grid">
+            {group.links.map(({ to, label, Icon }) => (
+              <Link key={to} to={to} className="more-card">
+                <span className="more-icon"><Icon size={22} /></span>
+                {label}
+              </Link>
+            ))}
+            {group.title === 'Account' && (
+              <button type="button" className="more-card logout" onClick={handleLogout}>
+                <span className="more-icon"><LogOut size={22} /></span>
+                Log out
+              </button>
+            )}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

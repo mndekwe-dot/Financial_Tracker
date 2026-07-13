@@ -3,7 +3,8 @@ import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
 } from 'recharts';
-import { TrendingUp, Trophy, CalendarClock } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { TrendingUp, Trophy, CalendarClock, PiggyBank } from 'lucide-react';
 import client from '../api/client';
 import { useDataRefresh } from '../context/DataRefreshContext';
 import WalletCard from '../components/WalletCard';
@@ -15,10 +16,15 @@ function formatCompact(value) {
 
 export default function Dashboard() {
   const [summary, setSummary] = useState(null);
+  const [budgets, setBudgets] = useState([]);
   const { version, bump } = useDataRefresh();
 
   useEffect(() => {
     client.get('/transactions/summary/').then(({ data }) => setSummary(data));
+    const now = new Date();
+    client.get('/budgets/', { params: { month: now.getMonth() + 1, year: now.getFullYear() } })
+      .then(({ data }) => setBudgets(data))
+      .catch(() => {});
   }, [version]);
 
   // Post any recurring transactions that have come due, once per app load.
@@ -43,6 +49,18 @@ export default function Dashboard() {
     Income: Number(m.income),
     Expense: Number(m.expense),
   }));
+
+  // Budgets closest to (or over) their limit first, top 4 for the widget.
+  const budgetRows = budgets
+    .map((b) => {
+      const spent = Number(b.spent);
+      const available = Number(b.available);
+      const ratio = available > 0 ? spent / available : 0;
+      return { ...b, spent, available, ratio, over: spent > available, near: spent <= available && ratio >= 0.8 };
+    })
+    .sort((a, b) => b.ratio - a.ratio)
+    .slice(0, 4);
+  const overCount = budgets.filter((b) => Number(b.spent) > Number(b.available)).length;
 
   return (
     <div>
@@ -95,6 +113,32 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {budgetRows.length > 0 && (
+        <div className="dash-budgets">
+          <div className="dash-budgets-head">
+            <h2><PiggyBank size={17} style={{ verticalAlign: -3 }} /> Budgets this month</h2>
+            <div className="dash-budgets-meta">
+              {overCount > 0 && <span className="amount-expense">{overCount} over</span>}
+              <Link to="/budgets" className="search-more">Manage →</Link>
+            </div>
+          </div>
+          <div className="dash-budget-list">
+            {budgetRows.map((b) => (
+              <div key={b.id} className="dash-budget-row">
+                <span className="dash-budget-name">{b.category_name}</span>
+                <div className="progress-bar">
+                  <div
+                    className={`progress-fill ${b.over ? 'over' : b.near ? 'near' : ''}`}
+                    style={{ width: `${b.available > 0 ? Math.min(100, b.ratio * 100) : 0}%` }}
+                  />
+                </div>
+                <span className="dash-budget-num">{b.spent.toFixed(0)}/{b.available.toFixed(0)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="charts-grid">
         <div className="chart-card">

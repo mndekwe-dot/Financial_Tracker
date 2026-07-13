@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/goals/', include('goals.urls')),
     path('api/recurring/', include('recurring.urls')),
     path('api/money/', include('moneyaccounts.urls')),
+    path('api/ussd/', include('ussd.urls')),
     path('api/search/', global_search, name='global-search'),
     path('api/export/', export_data, name='export-data'),
     # Serve the built React app for every other route (client-side routing)

@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
+import { Copy } from 'lucide-react';
 import client from '../api/client';
 import { useDataRefresh } from '../context/DataRefreshContext';
+import { useToast } from '../context/ToastContext';
 import CategoryIcon from '../components/CategoryIcon';
 import AmountInput from '../components/AmountInput';
 import { evaluateExpression } from '../utils/calc';
 
 const today = new Date();
 const EMPTY_FORM = { category: '', amount: '' };
+
+const prevMonth = (m, y) => (m === 1 ? { m: 12, y: y - 1 } : { m: m - 1, y });
 
 export default function Budgets() {
   const [budgets, setBudgets] = useState([]);
@@ -17,6 +21,7 @@ export default function Budgets() {
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [year, setYear] = useState(today.getFullYear());
   const { version, bump } = useDataRefresh();
+  const toast = useToast();
 
   function loadBudgets() {
     client.get('/budgets/', { params: { month, year } }).then(({ data }) => setBudgets(data));
@@ -81,18 +86,45 @@ export default function Budgets() {
     setForm(EMPTY_FORM);
   }
 
-  // Count how many budgets are over or near (≥80%) their limit for the banner.
+  async function copyFromPrevious() {
+    const { m: fm, y: fy } = prevMonth(month, year);
+    try {
+      const { data } = await client.post('/budgets/copy/', {
+        from_month: fm, from_year: fy, to_month: month, to_year: year,
+      });
+      bump();
+      toast(data.created > 0
+        ? `Copied ${data.created} budget${data.created === 1 ? '' : 's'} from ${fm}/${fy}.`
+        : `Nothing to copy from ${fm}/${fy}.`, data.created > 0 ? 'success' : 'info');
+    } catch {
+      toast('Could not copy budgets.', 'error');
+    }
+  }
+
+  // Available = amount + rollover from last month. Alerts & totals use it.
   const budgetAlerts = budgets.reduce(
     (acc, b) => {
       const spent = Number(b.spent);
-      const amount = Number(b.amount);
-      if (amount <= 0) return acc;
-      if (spent > amount) { acc.over += 1; acc.total += 1; }
-      else if (spent / amount >= 0.8) { acc.near += 1; acc.total += 1; }
+      const available = Number(b.available);
+      if (available <= 0) return acc;
+      if (spent > available) { acc.over += 1; acc.total += 1; }
+      else if (spent / available >= 0.8) { acc.near += 1; acc.total += 1; }
       return acc;
     },
     { over: 0, near: 0, total: 0 },
   );
+
+  const totals = budgets.reduce(
+    (acc, b) => {
+      acc.budgeted += Number(b.amount);
+      acc.available += Number(b.available);
+      acc.spent += Number(b.spent);
+      return acc;
+    },
+    { budgeted: 0, available: 0, spent: 0 },
+  );
+  const totalPct = totals.available > 0 ? Math.min(100, (totals.spent / totals.available) * 100) : 0;
+  const totalOver = totals.spent > totals.available;
 
   return (
     <div>
@@ -122,7 +154,32 @@ export default function Budgets() {
         />
         <button type="submit">{editingId ? 'Update' : `Add for ${month}/${year}`}</button>
         {editingId && <button type="button" className="secondary" onClick={cancelEdit}>Cancel</button>}
+        <button type="button" className="secondary" onClick={copyFromPrevious} title="Copy budgets from last month">
+          <Copy size={15} style={{ verticalAlign: -2 }} /> Copy last month
+        </button>
       </form>
+
+      {budgets.length > 0 && (
+        <div className="budget-summary">
+          <div className="budget-summary-head">
+            <span>Spent this month</span>
+            <strong className={totalOver ? 'amount-expense' : ''}>
+              {totals.spent.toFixed(2)} / {totals.available.toFixed(2)}
+            </strong>
+          </div>
+          <div className="progress-bar">
+            <div className={`progress-fill ${totalOver ? 'over' : ''}`} style={{ width: `${totalPct}%` }} />
+          </div>
+          <div className="budget-summary-foot">
+            <span>Budgeted {totals.budgeted.toFixed(2)}</span>
+            <span className={totalOver ? 'amount-expense' : 'amount-income'}>
+              {totalOver
+                ? `${(totals.spent - totals.available).toFixed(2)} over`
+                : `${(totals.available - totals.spent).toFixed(2)} left`}
+            </span>
+          </div>
+        </div>
+      )}
 
       {budgetAlerts.total > 0 && (
         <div className={`budget-alert ${budgetAlerts.over > 0 ? 'is-over' : 'is-near'}`}>
@@ -136,10 +193,12 @@ export default function Budgets() {
         {budgets.map((b) => {
           const spent = Number(b.spent);
           const amount = Number(b.amount);
-          const difference = amount - spent;
-          const pct = Math.min(100, (spent / amount) * 100);
-          const over = spent > amount;
-          const near = !over && amount > 0 && spent / amount >= 0.8;
+          const rollover = Number(b.rollover);
+          const available = Number(b.available);
+          const difference = available - spent;
+          const pct = available > 0 ? Math.min(100, (spent / available) * 100) : 0;
+          const over = spent > available;
+          const near = !over && available > 0 && spent / available >= 0.8;
           return (
             <div key={b.id} className={`budget-card${over ? ' over' : near ? ' near' : ''}`}>
               <div className="budget-card-header">
@@ -158,11 +217,19 @@ export default function Budgets() {
                 />
               </div>
               <div className="budget-card-footer">
-                <span>{spent.toFixed(2)} / {amount.toFixed(2)}</span>
+                <span>{spent.toFixed(2)} / {available.toFixed(2)}</span>
                 <span className={over ? 'amount-expense' : 'amount-income'}>
                   {over ? `${Math.abs(difference).toFixed(2)} over` : `${difference.toFixed(2)} left`}
                 </span>
               </div>
+              {rollover !== 0 && (
+                <div className="budget-rollover">
+                  budget {amount.toFixed(2)}
+                  <span className={rollover > 0 ? 'amount-income' : 'amount-expense'}>
+                    {' '}{rollover > 0 ? '+' : '−'}{Math.abs(rollover).toFixed(2)} rollover
+                  </span>
+                </div>
+              )}
               <div className="budget-card-actions">
                 <button onClick={() => handleEdit(b)}>Edit</button>
                 <button onClick={() => handleDelete(b.id)}>Delete</button>

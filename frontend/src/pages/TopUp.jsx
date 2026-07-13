@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Smartphone, BusFront, Check } from 'lucide-react';
 import client from '../api/client';
 import AmountInput from '../components/AmountInput';
+import UssdShortcuts from '../components/UssdShortcuts';
 import { evaluateExpression } from '../utils/calc';
 import { useDataRefresh } from '../context/DataRefreshContext';
 import { useToast } from '../context/ToastContext';
@@ -118,6 +119,12 @@ export default function TopUp() {
 
         <button type="submit" disabled={busy}>{busy ? 'Saving…' : `Top up ${active.label}`}</button>
       </form>
+
+      <div className="topup-shortcuts">
+        <h2 className="shopping-section-title">Dial codes</h2>
+        <p className="topup-note" style={{ marginTop: 0 }}>Tap to dial the USSD code on your phone. Manage these in Settings.</p>
+        <UssdShortcuts />
+      </div>
     </div>
   );
 }

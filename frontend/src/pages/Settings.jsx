@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, KeyRound, Palette, Coins, Download, Trash2 } from 'lucide-react';
+import { User, KeyRound, Palette, Coins, Download, Trash2, Phone } from 'lucide-react';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import ChangePasswordModal from '../components/ChangePasswordModal';
+import UssdManager from '../components/UssdManager';
 import { getTheme, applyTheme } from '../utils/theme';
 import { getCurrency, setCurrency } from '../utils/currency';
 
@@ -130,6 +131,12 @@ export default function Settings() {
               <option key={c || 'none'} value={c}>{c ? `${c}  (${(1234.5).toFixed(2)} → ${c}1234.50)` : 'None'}</option>
             ))}
           </select>
+        </section>
+
+        <section className="settings-card settings-card-wide">
+          <h2><Phone size={17} /> USSD shortcuts</h2>
+          <p className="settings-note">Save the codes you dial for airtime, transport card, etc. Tap the phone icon to dial, or use them on the Top-up page.</p>
+          <UssdManager />
         </section>
 
         <section className="settings-card">
