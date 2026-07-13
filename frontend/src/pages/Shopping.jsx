@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Trash2, Upload, Download } from 'lucide-react';
+import { Plus, Trash2, Upload, Download, ChevronDown } from 'lucide-react';
 import client from '../api/client';
 import AmountInput from '../components/AmountInput';
 import { evaluateExpression } from '../utils/calc';
@@ -37,6 +37,25 @@ const CSV_HEADER = ['Item', 'Category', 'Unit price', 'Quantity', 'Bought', 'Act
 
 const UNCATEGORIZED = 'Uncategorized';
 
+const STATUS_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'pending', label: 'Not bought' },
+  { key: 'bought', label: 'Bought' },
+];
+
+// Fallback palette for shopping categories that don't match one of the user's
+// expense categories. A category name always maps to the same colour.
+const SHOP_PALETTE = [
+  '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4',
+  '#ef4444', '#10b981', '#6366f1', '#14b8a6', '#f472b6',
+];
+
+function fallbackColor(key) {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return SHOP_PALETTE[h % SHOP_PALETTE.length];
+}
+
 // Editable cell for the shopping stage: saves on blur/Enter if the value changed.
 function ActualInput({ item, field, disabled, onSave }) {
   const current = item[field];
@@ -72,6 +91,8 @@ export default function Shopping() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'bought'
   const [categoryFilter, setCategoryFilter] = useState(''); // '' = all categories
+  const [expandedId, setExpandedId] = useState(null); // which item card is open
+  const [catColors, setCatColors] = useState({}); // lowercased category name -> theme colour
   const fileInputRef = useRef(null);
   const { version, bump } = useDataRefresh();
   const toast = useToast();
@@ -86,6 +107,23 @@ export default function Shopping() {
   }
 
   useEffect(load, [version]);
+
+  // Pull the user's category colours so matching shopping categories are themed.
+  useEffect(() => {
+    client.get('/categories/').then(({ data }) => {
+      const map = {};
+      for (const c of data) map[c.name.trim().toLowerCase()] = c.color;
+      setCatColors(map);
+    }).catch(() => {});
+  }, []);
+
+  // Colour for a shopping category: a matching user category's colour, else a
+  // stable fallback derived from the name.
+  function colorForCategory(name) {
+    const key = (name || '').trim().toLowerCase();
+    if (!key) return null;
+    return catColors[key] || fallbackColor(key);
+  }
 
   const active = lists.find((l) => l.id === activeId);
 
@@ -259,71 +297,99 @@ export default function Shopping() {
   const showPending = statusFilter === 'all' || statusFilter === 'pending';
   const showBought = statusFilter === 'all' || statusFilter === 'bought';
 
-  function renderRow(item) {
+  // A single item, shown as a compact row that expands on click for editing.
+  function renderItem(item, index) {
+    const expanded = expandedId === item.id;
     const diff = item.bought ? Number(item.actual_total) - Number(item.planned_total) : null;
+    const toggle = () => setExpandedId(expanded ? null : item.id);
     return (
-      <tr key={item.id} style={{ opacity: item.bought ? 0.85 : 1 }}>
-        <td data-label="Item">{item.name}</td>
-        <td data-label="Category">{item.category || <span className="muted">—</span>}</td>
-        <td data-label="Unit price">{Number(item.planned_unit_price).toFixed(2)}</td>
-        <td data-label="Qty">{Number(item.planned_quantity)}</td>
-        <td data-label="Total">{Number(item.planned_total).toFixed(2)}</td>
-        <td data-label="Bought">
+      <div
+        key={item.id}
+        className={`shop-item${item.bought ? ' is-bought' : ''}${expanded ? ' is-open' : ''}`}
+        style={{ '--row-index': index }}
+      >
+        <div
+          className="shop-item-head"
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          onClick={toggle}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}
+        >
           <input
             type="checkbox"
+            className="shop-check"
             checked={item.bought}
+            onClick={(e) => e.stopPropagation()}
             onChange={() => toggleBought(item)}
+            title={item.bought ? 'Mark as not bought' : 'Mark as bought'}
           />
-        </td>
-        <td data-label="Actual price">
-          <ActualInput item={item} field="actual_unit_price" disabled={!item.bought} onSave={patchItem} />
-        </td>
-        <td data-label="Actual qty">
-          <ActualInput item={item} field="actual_quantity" disabled={!item.bought} onSave={patchItem} />
-        </td>
-        <td data-label="New total">
-          {item.bought ? Number(item.actual_total).toFixed(2) : '—'}
-        </td>
-        <td data-label="Diff" className={diff > 0 ? 'amount-expense' : diff < 0 ? 'amount-income' : ''}>
-          {diff === null ? '—' : `${diff > 0 ? '+' : ''}${diff.toFixed(2)}`}
-        </td>
-        <td>
-          <button className="secondary" onClick={() => deleteItem(item.id)} title="Remove item">
-            <Trash2 size={16} />
-          </button>
-        </td>
-      </tr>
+          <div className="shop-item-main">
+            <span className="shop-item-name">{item.name}</span>
+            {item.category && (
+              <button
+                type="button"
+                className="cat-badge"
+                style={{ '--cat-color': colorForCategory(item.category) }}
+                title={`Filter by ${item.category}`}
+                onClick={(e) => { e.stopPropagation(); setCategoryFilter(item.category); }}
+              >
+                {item.category}
+              </button>
+            )}
+          </div>
+          <div className="shop-item-meta">
+            <span className="shop-item-total">{Number(item.bought ? item.actual_total : item.planned_total).toFixed(2)}</span>
+            <ChevronDown size={18} className="chevron" aria-hidden="true" />
+          </div>
+        </div>
+
+        <div className="shop-item-body">
+          <div className="shop-item-body-inner">
+            <div className="detail-grid">
+              <div className="detail"><span>Unit price</span><strong>{Number(item.planned_unit_price).toFixed(2)}</strong></div>
+              <div className="detail"><span>Quantity</span><strong>{Number(item.planned_quantity)}</strong></div>
+              <div className="detail"><span>Planned total</span><strong>{Number(item.planned_total).toFixed(2)}</strong></div>
+            </div>
+
+            {item.bought && (
+              <div className="detail-grid">
+                <label className="detail"><span>Actual price</span>
+                  <ActualInput item={item} field="actual_unit_price" disabled={!item.bought} onSave={patchItem} />
+                </label>
+                <label className="detail"><span>Actual qty</span>
+                  <ActualInput item={item} field="actual_quantity" disabled={!item.bought} onSave={patchItem} />
+                </label>
+                <div className="detail"><span>New total</span><strong>{Number(item.actual_total).toFixed(2)}</strong></div>
+                <div className="detail"><span>Diff</span>
+                  <strong className={diff > 0 ? 'amount-expense' : diff < 0 ? 'amount-income' : ''}>
+                    {diff === null ? '—' : `${diff > 0 ? '+' : ''}${diff.toFixed(2)}`}
+                  </strong>
+                </div>
+              </div>
+            )}
+
+            <div className="shop-item-actions">
+              <button type="button" className="secondary" onClick={() => deleteItem(item.id)}>
+                <Trash2 size={15} style={{ verticalAlign: -2 }} /> Remove item
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
   function renderSection(title, rows, emptyText) {
     return (
-      <>
-        <h2 className="shopping-section-title">{title} ({rows.length})</h2>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Category</th>
-              <th>Unit price</th>
-              <th>Qty</th>
-              <th>Total</th>
-              <th>Bought</th>
-              <th>Actual price</th>
-              <th>Actual qty</th>
-              <th>New total</th>
-              <th>Diff</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(renderRow)}
-            {rows.length === 0 && (
-              <tr><td colSpan={11}>{emptyText}</td></tr>
-            )}
-          </tbody>
-        </table>
-      </>
+      // Key on the active filters so switching filters re-mounts the list and
+      // replays the staggered card entrance animation.
+      <div className="shopping-section" key={`${title}-${statusFilter}-${categoryFilter}`}>
+        <h2 className="shopping-section-title">{title} <span className="section-count">{rows.length}</span></h2>
+        {rows.length === 0
+          ? <p className="shop-empty">{emptyText}</p>
+          : <div className="shop-list">{rows.map(renderItem)}</div>}
+      </div>
     );
   }
 
@@ -404,31 +470,31 @@ export default function Shopping() {
 
           {active.items.length > 0 && (
             <div className="shopping-filters">
-              <div className="filter-pills" role="group" aria-label="Filter by status">
-                <button
-                  type="button"
-                  className={statusFilter === 'all' ? 'pill active' : 'pill'}
-                  onClick={() => setStatusFilter('all')}
-                >
-                  All ({filtered.length})
-                </button>
-                <button
-                  type="button"
-                  className={statusFilter === 'pending' ? 'pill active' : 'pill'}
-                  onClick={() => setStatusFilter('pending')}
-                >
-                  Pending ({remainingItems.length})
-                </button>
-                <button
-                  type="button"
-                  className={statusFilter === 'bought' ? 'pill active' : 'pill'}
-                  onClick={() => setStatusFilter('bought')}
-                >
-                  Bought ({boughtItems.length})
-                </button>
+              <div
+                className="segmented"
+                role="group"
+                aria-label="Filter by status"
+                style={{ '--seg-count': STATUS_FILTERS.length, '--seg-active': STATUS_FILTERS.findIndex((f) => f.key === statusFilter) }}
+              >
+                <span className="segmented-thumb" aria-hidden="true" />
+                {STATUS_FILTERS.map((f) => {
+                  const count = f.key === 'all' ? filtered.length : f.key === 'pending' ? remainingItems.length : boughtItems.length;
+                  return (
+                    <button
+                      key={f.key}
+                      type="button"
+                      className={statusFilter === f.key ? 'segment active' : 'segment'}
+                      aria-pressed={statusFilter === f.key}
+                      onClick={() => setStatusFilter(f.key)}
+                    >
+                      <span className="segment-label">{f.label}</span>
+                      <span className="segment-count">{count}</span>
+                    </button>
+                  );
+                })}
               </div>
               <label className="filter-category">
-                Category:
+                <span>Category</span>
                 <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
                   <option value="">All categories</option>
                   {categories.map((c) => (
@@ -440,11 +506,7 @@ export default function Shopping() {
           )}
 
           {active.items.length === 0 ? (
-            <table className="data-table">
-              <tbody>
-                <tr><td>No items yet — add what you plan to buy.</td></tr>
-              </tbody>
-            </table>
+            <p className="shop-empty">No items yet — add what you plan to buy.</p>
           ) : (
             <>
               {showPending && renderSection('Remaining', remainingItems, 'Nothing left — everything is bought.')}
