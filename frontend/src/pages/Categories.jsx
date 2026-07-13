@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import client from '../api/client';
 import IconPicker from '../components/IconPicker';
 import CategoryIcon from '../components/CategoryIcon';
+import FilterPills from '../components/FilterPills';
 import { CATEGORY_ICONS } from '../constants/icons';
 
 const EMPTY_FORM = { name: '', type: 'expense', color: '#6366f1', icon: CATEGORY_ICONS[0] };
@@ -11,6 +12,7 @@ export default function Categories() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'expense' | 'income'
 
   function loadCategories() {
     client.get('/categories/').then(({ data }) => setCategories(data));
@@ -51,6 +53,10 @@ export default function Categories() {
     setEditingId(null);
     setForm(EMPTY_FORM);
   }
+
+  const visibleCategories = typeFilter === 'all'
+    ? categories
+    : categories.filter((c) => c.type === typeFilter);
 
   async function addDefaults() {
     setError('');
@@ -94,6 +100,21 @@ export default function Categories() {
         {editingId && <button type="button" onClick={cancelEdit}>Cancel</button>}
       </form>
 
+      {categories.length > 0 && (
+        <div className="filter-row">
+          <FilterPills
+            ariaLabel="Filter categories by type"
+            value={typeFilter}
+            onChange={setTypeFilter}
+            options={[
+              { key: 'all', label: 'All', count: categories.length },
+              { key: 'expense', label: 'Expense', count: categories.filter((c) => c.type === 'expense').length },
+              { key: 'income', label: 'Income', count: categories.filter((c) => c.type === 'income').length },
+            ]}
+          />
+        </div>
+      )}
+
       <table className="data-table">
         <thead>
           <tr>
@@ -104,7 +125,7 @@ export default function Categories() {
           </tr>
         </thead>
         <tbody>
-          {categories.map((c) => (
+          {visibleCategories.map((c) => (
             <tr key={c.id}>
               <td data-label="Icon">
                 <span className="category-icon" style={{ background: `${c.color}33`, color: c.color }}>
@@ -126,6 +147,9 @@ export default function Categories() {
                 <button type="button" onClick={addDefaults}>Add starter categories</button>
               </td>
             </tr>
+          )}
+          {categories.length > 0 && visibleCategories.length === 0 && (
+            <tr><td colSpan={4}>No {typeFilter} categories.</td></tr>
           )}
         </tbody>
       </table>

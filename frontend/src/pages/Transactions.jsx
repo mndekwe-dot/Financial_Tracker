@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import FilterPills from '../components/FilterPills';
 import client from '../api/client';
 import { useDataRefresh } from '../context/DataRefreshContext';
 import CategoryIcon from '../components/CategoryIcon';
@@ -154,20 +155,22 @@ export default function Transactions() {
         {editingId && <button type="button" className="secondary" onClick={cancelEdit}>Cancel</button>}
       </form>
 
-      <div className="filter-bar">
-        <label>
-          Type:
-          <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-            <option value="">All</option>
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
-          </select>
-        </label>
+      <div className="filter-row">
+        <FilterPills
+          ariaLabel="Filter transactions by type"
+          value={filterType}
+          onChange={setFilterType}
+          options={[
+            { key: '', label: 'All' },
+            { key: 'expense', label: 'Expense' },
+            { key: 'income', label: 'Income' },
+          ]}
+        />
         <input
           placeholder="Search description or category…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: 1, minWidth: 0 }}
+          style={{ flex: 1, minWidth: 180 }}
         />
       </div>
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, Pencil, Trash2 } from 'lucide-react';
 import client from '../api/client';
 import AmountInput from '../components/AmountInput';
+import FilterPills from '../components/FilterPills';
 import { evaluateExpression } from '../utils/calc';
 import { useDataRefresh } from '../context/DataRefreshContext';
 
@@ -13,6 +14,8 @@ export default function Loans() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
+  const [statusFilter, setStatusFilter] = useState('outstanding'); // 'all' | 'outstanding' | 'settled'
+  const [directionFilter, setDirectionFilter] = useState('all'); // 'all' | 'owed_to_me' | 'i_owe'
   const { version, bump } = useDataRefresh();
 
   function load() {
@@ -74,6 +77,11 @@ export default function Loans() {
     bump();
   }
 
+  const byStatus = (l) =>
+    statusFilter === 'all' || (statusFilter === 'settled' ? l.settled : !l.settled);
+  const byDirection = (l) => directionFilter === 'all' || l.direction === directionFilter;
+  const visibleLoans = loans.filter((l) => byStatus(l) && byDirection(l));
+
   return (
     <div>
       <div className="page-header">
@@ -132,6 +140,31 @@ export default function Loans() {
         {editingId && <button type="button" className="secondary" onClick={cancelEdit}>Cancel</button>}
       </form>
 
+      {loans.length > 0 && (
+        <div className="filter-row">
+          <FilterPills
+            ariaLabel="Filter loans by status"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[
+              { key: 'outstanding', label: 'Outstanding', count: loans.filter((l) => !l.settled).length },
+              { key: 'settled', label: 'Settled', count: loans.filter((l) => l.settled).length },
+              { key: 'all', label: 'All', count: loans.length },
+            ]}
+          />
+          <FilterPills
+            ariaLabel="Filter loans by direction"
+            value={directionFilter}
+            onChange={setDirectionFilter}
+            options={[
+              { key: 'all', label: 'Both' },
+              { key: 'owed_to_me', label: 'Owed to me' },
+              { key: 'i_owe', label: 'I owe' },
+            ]}
+          />
+        </div>
+      )}
+
       <table className="data-table">
         <thead>
           <tr>
@@ -143,7 +176,7 @@ export default function Loans() {
           </tr>
         </thead>
         <tbody>
-          {loans.map((loan) => (
+          {visibleLoans.map((loan) => (
             <tr key={loan.id} style={{ opacity: loan.settled ? 0.5 : 1 }}>
               <td data-label="Person">{loan.person}</td>
               <td data-label="Direction">
@@ -170,6 +203,9 @@ export default function Loans() {
           ))}
           {loans.length === 0 && (
             <tr><td colSpan={5}>No loans recorded yet.</td></tr>
+          )}
+          {loans.length > 0 && visibleLoans.length === 0 && (
+            <tr><td colSpan={5}>No loans match these filters.</td></tr>
           )}
         </tbody>
       </table>

@@ -999,8 +999,9 @@
   margin-top: 0.4rem;
 }
 
-/* Shopping filters */
-.shopping-filters {
+/* Filter rows (shopping + other pages) */
+.shopping-filters,
+.filter-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
