@@ -14,9 +14,11 @@ class Transaction(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transactions')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='transactions')
+    account = models.ForeignKey('moneyaccounts.Account', on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
     type = models.CharField(max_length=10, choices=TYPE_CHOICES)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     description = models.CharField(max_length=255, blank=True)
+    tags = models.CharField(max_length=255, blank=True, default='')
     date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
 

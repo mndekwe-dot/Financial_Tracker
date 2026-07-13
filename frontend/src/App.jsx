@@ -15,6 +15,11 @@ import Loans from './pages/Loans';
 import Reports from './pages/Reports';
 import Shopping from './pages/Shopping';
 import TopUp from './pages/TopUp';
+import Goals from './pages/Goals';
+import Recurring from './pages/Recurring';
+import Search from './pages/Search';
+import Accounts from './pages/Accounts';
+import Settings from './pages/Settings';
 import MomoSetup from './pages/MomoSetup';
 import Pay from './pages/Pay';
 import More from './pages/More';
@@ -40,6 +45,11 @@ export default function App() {
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/shopping" element={<Shopping />} />
                 <Route path="/topup" element={<TopUp />} />
+                <Route path="/goals" element={<Goals />} />
+                <Route path="/recurring" element={<Recurring />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/accounts" element={<Accounts />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="/momo" element={<MomoSetup />} />
                 <Route path="/pay" element={<Pay />} />
                 <Route path="/more" element={<More />} />

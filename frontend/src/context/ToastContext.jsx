@@ -17,9 +17,10 @@ export function ToastProvider({ children }) {
     setToasts((current) => current.filter((t) => t.id !== id));
   }, []);
 
-  const toast = useCallback((message, type = 'success', duration = 3500) => {
+  // action (optional): { label, onClick } renders a button (e.g. Undo) in the toast.
+  const toast = useCallback((message, type = 'success', duration = 3500, action = null) => {
     const id = nextId.current++;
-    setToasts((current) => [...current, { id, message, type }]);
+    setToasts((current) => [...current, { id, message, type, action }]);
     if (duration > 0) {
       setTimeout(() => dismiss(id), duration);
     }
@@ -30,12 +31,20 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={toast}>
       {children}
       <div className="toast-container" role="status" aria-live="polite">
-        {toasts.map(({ id, message, type }) => {
+        {toasts.map(({ id, message, type, action }) => {
           const Icon = ICONS[type] || Info;
           return (
             <div key={id} className={`toast toast-${type}`}>
               <Icon size={18} className="toast-icon" />
               <span className="toast-message">{message}</span>
+              {action && (
+                <button
+                  className="toast-action"
+                  onClick={() => { action.onClick(); dismiss(id); }}
+                >
+                  {action.label}
+                </button>
+              )}
               <button className="toast-close" onClick={() => dismiss(id)} aria-label="Dismiss">
                 <X size={15} />
               </button>

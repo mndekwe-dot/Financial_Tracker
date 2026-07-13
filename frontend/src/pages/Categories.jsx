@@ -3,6 +3,7 @@ import client from '../api/client';
 import IconPicker from '../components/IconPicker';
 import CategoryIcon from '../components/CategoryIcon';
 import FilterPills from '../components/FilterPills';
+import { useUndoableDelete } from '../utils/useUndoableDelete';
 import { CATEGORY_ICONS } from '../constants/icons';
 
 const EMPTY_FORM = { name: '', type: 'expense', color: '#6366f1', icon: CATEGORY_ICONS[0] };
@@ -13,6 +14,7 @@ export default function Categories() {
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
   const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'expense' | 'income'
+  const undoableDelete = useUndoableDelete();
 
   function loadCategories() {
     client.get('/categories/').then(({ data }) => setCategories(data));
@@ -43,10 +45,13 @@ export default function Categories() {
     setForm({ name: category.name, type: category.type, color: category.color, icon: category.icon });
   }
 
-  async function handleDelete(id) {
-    if (!confirm('Delete this category? Transactions using it will be unlinked.')) return;
-    await client.delete(`/categories/${id}/`);
-    loadCategories();
+  function handleDelete(c) {
+    undoableDelete({
+      label: 'Category',
+      remove: () => setCategories((cur) => cur.filter((x) => x.id !== c.id)),
+      restore: () => loadCategories(),
+      doDelete: () => client.delete(`/categories/${c.id}/`),
+    });
   }
 
   function cancelEdit() {
@@ -136,7 +141,7 @@ export default function Categories() {
               <td data-label="Type">{c.type}</td>
               <td>
                 <button onClick={() => handleEdit(c)}>Edit</button>
-                <button onClick={() => handleDelete(c.id)}>Delete</button>
+                <button onClick={() => handleDelete(c)}>Delete</button>
               </td>
             </tr>
           ))}

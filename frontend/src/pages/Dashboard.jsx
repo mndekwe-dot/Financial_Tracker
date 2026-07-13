@@ -15,11 +15,19 @@ function formatCompact(value) {
 
 export default function Dashboard() {
   const [summary, setSummary] = useState(null);
-  const { version } = useDataRefresh();
+  const { version, bump } = useDataRefresh();
 
   useEffect(() => {
     client.get('/transactions/summary/').then(({ data }) => setSummary(data));
   }, [version]);
+
+  // Post any recurring transactions that have come due, once per app load.
+  useEffect(() => {
+    client.post('/recurring/run_due/')
+      .then(({ data }) => { if (data.created > 0) bump(); })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!summary) return <div className="loading">Loading...</div>;
 

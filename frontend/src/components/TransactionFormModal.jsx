@@ -7,12 +7,15 @@ const buildForm = (date) => ({
   type: 'expense',
   amount: '',
   category: '',
+  account: '',
   description: '',
+  tags: '',
   date: date || new Date().toISOString().slice(0, 10),
 });
 
 export default function TransactionFormModal({ open, initialDate, onClose, onSaved }) {
   const [categories, setCategories] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [form, setForm] = useState(() => buildForm(initialDate));
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -22,6 +25,7 @@ export default function TransactionFormModal({ open, initialDate, onClose, onSav
       setForm(buildForm(initialDate));
       setError('');
       client.get('/categories/').then(({ data }) => setCategories(data));
+      client.get('/money/accounts/').then(({ data }) => setAccounts(data));
     }
   }, [open, initialDate]);
 
@@ -39,7 +43,7 @@ export default function TransactionFormModal({ open, initialDate, onClose, onSav
     }
     setSubmitting(true);
     try {
-      await client.post('/transactions/', { ...form, amount, category: form.category || null });
+      await client.post('/transactions/', { ...form, amount, category: form.category || null, account: form.account || null });
       onSaved?.();
     } catch (err) {
       const data = err.response?.data;
@@ -71,10 +75,23 @@ export default function TransactionFormModal({ open, initialDate, onClose, onSav
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
+          {accounts.length > 0 && (
+            <select value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })}>
+              <option value="">No account</option>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          )}
           <input
             placeholder="Description"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+          <input
+            placeholder="Tags (comma-separated, e.g. trip, work)"
+            value={form.tags}
+            onChange={(e) => setForm({ ...form, tags: e.target.value })}
           />
           <input
             type="date"

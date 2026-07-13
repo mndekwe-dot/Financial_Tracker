@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import FilterPills from '../components/FilterPills';
+import { useUndoableDelete } from '../utils/useUndoableDelete';
 import client from '../api/client';
 import { useDataRefresh } from '../context/DataRefreshContext';
 import CategoryIcon from '../components/CategoryIcon';
@@ -7,7 +8,7 @@ import AmountInput from '../components/AmountInput';
 import { evaluateExpression } from '../utils/calc';
 
 const today = new Date();
-const EMPTY_FORM = { type: 'expense', amount: '', category: '', description: '', date: today.toISOString().slice(0, 10) };
+const EMPTY_FORM = { type: 'expense', amount: '', category: '', account: '', description: '', tags: '', date: today.toISOString().slice(0, 10) };
 
 function monthBounds(year, month) {
   const pad = (n) => String(n).padStart(2, '0');
@@ -21,6 +22,7 @@ function monthBounds(year, month) {
 export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
@@ -29,6 +31,7 @@ export default function Transactions() {
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [year, setYear] = useState(today.getFullYear());
   const { version, bump } = useDataRefresh();
+  const undoableDelete = useUndoableDelete();
 
   function loadTransactions() {
     const params = { ...monthBounds(year, month) };
@@ -38,6 +41,7 @@ export default function Transactions() {
 
   useEffect(() => {
     client.get('/categories/').then(({ data }) => setCategories(data));
+    client.get('/money/accounts/').then(({ data }) => setAccounts(data));
   }, []);
 
   useEffect(loadTransactions, [filterType, version, month, year]);
@@ -59,7 +63,8 @@ export default function Transactions() {
   const displayed = search.trim()
     ? transactions.filter((t) =>
         t.description?.toLowerCase().includes(search.toLowerCase()) ||
-        t.category_name?.toLowerCase().includes(search.toLowerCase())
+        t.category_name?.toLowerCase().includes(search.toLowerCase()) ||
+        t.tags?.toLowerCase().includes(search.toLowerCase())
       )
     : transactions;
 
@@ -71,7 +76,7 @@ export default function Transactions() {
       setError('Enter a valid amount greater than zero.');
       return;
     }
-    const payload = { ...form, amount, category: form.category || null };
+    const payload = { ...form, amount, category: form.category || null, account: form.account || null };
     try {
       if (editingId) {
         await client.put(`/transactions/${editingId}/`, payload);
@@ -93,15 +98,20 @@ export default function Transactions() {
       type: t.type,
       amount: t.amount,
       category: t.category ?? '',
+      account: t.account ?? '',
       description: t.description,
+      tags: t.tags ?? '',
       date: t.date,
     });
   }
 
-  async function handleDelete(id) {
-    if (!confirm('Delete this transaction?')) return;
-    await client.delete(`/transactions/${id}/`);
-    bump();
+  function handleDelete(t) {
+    undoableDelete({
+      label: 'Transaction',
+      remove: () => setTransactions((cur) => cur.filter((x) => x.id !== t.id)),
+      restore: () => loadTransactions(),
+      doDelete: async () => { await client.delete(`/transactions/${t.id}/`); bump(); },
+    });
   }
 
   function cancelEdit() {
@@ -140,10 +150,23 @@ export default function Transactions() {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
+        {accounts.length > 0 && (
+          <select value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })}>
+            <option value="">No account</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+        )}
         <input
           placeholder="Description"
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
+        />
+        <input
+          placeholder="Tags (comma-separated)"
+          value={form.tags}
+          onChange={(e) => setForm({ ...form, tags: e.target.value })}
         />
         <input
           type="date"
@@ -200,13 +223,22 @@ export default function Transactions() {
                   </>
                 ) : '-'}
               </td>
-              <td data-label="Description">{t.description}</td>
+              <td data-label="Description">
+                {t.description}
+                {t.tags && (
+                  <span className="txn-tags">
+                    {t.tags.split(',').map((tag) => tag.trim()).filter(Boolean).map((tag) => (
+                      <span key={tag} className="txn-tag">{tag}</span>
+                    ))}
+                  </span>
+                )}
+              </td>
               <td data-label="Amount" className={t.type === 'income' ? 'amount-income' : 'amount-expense'}>
                 {t.type === 'income' ? '+' : '-'}{Number(t.amount).toFixed(2)}
               </td>
               <td>
                 <button onClick={() => handleEdit(t)}>Edit</button>
-                <button onClick={() => handleDelete(t.id)}>Delete</button>
+                <button onClick={() => handleDelete(t)}>Delete</button>
               </td>
             </tr>
           ))}

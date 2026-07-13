@@ -4,6 +4,7 @@ import client from '../api/client';
 import AmountInput from '../components/AmountInput';
 import FilterPills from '../components/FilterPills';
 import { evaluateExpression } from '../utils/calc';
+import { useUndoableDelete } from '../utils/useUndoableDelete';
 import { useDataRefresh } from '../context/DataRefreshContext';
 
 const EMPTY_FORM = { person: '', amount: '', direction: 'owed_to_me', date: new Date().toISOString().slice(0, 10), note: '' };
@@ -17,6 +18,7 @@ export default function Loans() {
   const [statusFilter, setStatusFilter] = useState('outstanding'); // 'all' | 'outstanding' | 'settled'
   const [directionFilter, setDirectionFilter] = useState('all'); // 'all' | 'owed_to_me' | 'i_owe'
   const { version, bump } = useDataRefresh();
+  const undoableDelete = useUndoableDelete();
 
   function load() {
     client.get('/loans/').then(({ data }) => setLoans(data));
@@ -71,10 +73,13 @@ export default function Loans() {
     bump();
   }
 
-  async function handleDelete(id) {
-    if (!confirm('Delete this loan record?')) return;
-    await client.delete(`/loans/${id}/`);
-    bump();
+  function handleDelete(loan) {
+    undoableDelete({
+      label: 'Loan',
+      remove: () => setLoans((cur) => cur.filter((x) => x.id !== loan.id)),
+      restore: () => load(),
+      doDelete: async () => { await client.delete(`/loans/${loan.id}/`); bump(); },
+    });
   }
 
   const byStatus = (l) =>
@@ -195,7 +200,7 @@ export default function Loans() {
                 <button className="secondary" onClick={() => toggleSettled(loan)} title="Toggle settled">
                   <CheckCircle2 size={16} />
                 </button>
-                <button className="secondary" onClick={() => handleDelete(loan.id)} title="Delete">
+                <button className="secondary" onClick={() => handleDelete(loan)} title="Delete">
                   <Trash2 size={16} />
                 </button>
               </td>

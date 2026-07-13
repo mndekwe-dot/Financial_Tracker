@@ -81,6 +81,19 @@ export default function Budgets() {
     setForm(EMPTY_FORM);
   }
 
+  // Count how many budgets are over or near (≥80%) their limit for the banner.
+  const budgetAlerts = budgets.reduce(
+    (acc, b) => {
+      const spent = Number(b.spent);
+      const amount = Number(b.amount);
+      if (amount <= 0) return acc;
+      if (spent > amount) { acc.over += 1; acc.total += 1; }
+      else if (spent / amount >= 0.8) { acc.near += 1; acc.total += 1; }
+      return acc;
+    },
+    { over: 0, near: 0, total: 0 },
+  );
+
   return (
     <div>
       <div className="page-header">
@@ -111,6 +124,14 @@ export default function Budgets() {
         {editingId && <button type="button" className="secondary" onClick={cancelEdit}>Cancel</button>}
       </form>
 
+      {budgetAlerts.total > 0 && (
+        <div className={`budget-alert ${budgetAlerts.over > 0 ? 'is-over' : 'is-near'}`}>
+          {budgetAlerts.over > 0 && <span><strong>{budgetAlerts.over}</strong> over budget</span>}
+          {budgetAlerts.over > 0 && budgetAlerts.near > 0 && <span> · </span>}
+          {budgetAlerts.near > 0 && <span><strong>{budgetAlerts.near}</strong> near the limit</span>}
+        </div>
+      )}
+
       <div className="budget-list">
         {budgets.map((b) => {
           const spent = Number(b.spent);
@@ -118,8 +139,9 @@ export default function Budgets() {
           const difference = amount - spent;
           const pct = Math.min(100, (spent / amount) * 100);
           const over = spent > amount;
+          const near = !over && amount > 0 && spent / amount >= 0.8;
           return (
-            <div key={b.id} className="budget-card">
+            <div key={b.id} className={`budget-card${over ? ' over' : near ? ' near' : ''}`}>
               <div className="budget-card-header">
                 <span>
                   <span className="category-icon" style={{ background: `${b.category_color}33`, color: b.category_color }}>
@@ -131,7 +153,7 @@ export default function Budgets() {
               </div>
               <div className="progress-bar">
                 <div
-                  className={`progress-fill ${over ? 'over' : ''}`}
+                  className={`progress-fill ${over ? 'over' : near ? 'near' : ''}`}
                   style={{ width: `${pct}%` }}
                 />
               </div>

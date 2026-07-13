@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Trash2, Upload, Download, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Upload, Download, ChevronDown, Receipt } from 'lucide-react';
 import client from '../api/client';
 import AmountInput from '../components/AmountInput';
 import { evaluateExpression } from '../utils/calc';
@@ -93,6 +93,7 @@ export default function Shopping() {
   const [categoryFilter, setCategoryFilter] = useState(''); // '' = all categories
   const [expandedId, setExpandedId] = useState(null); // which item card is open
   const [catColors, setCatColors] = useState({}); // lowercased category name -> theme colour
+  const [allCategories, setAllCategories] = useState([]);
   const fileInputRef = useRef(null);
   const { version, bump } = useDataRefresh();
   const toast = useToast();
@@ -111,6 +112,7 @@ export default function Shopping() {
   // Pull the user's category colours so matching shopping categories are themed.
   useEffect(() => {
     client.get('/categories/').then(({ data }) => {
+      setAllCategories(data);
       const map = {};
       for (const c of data) map[c.name.trim().toLowerCase()] = c.color;
       setCatColors(map);
@@ -225,6 +227,32 @@ export default function Shopping() {
     const safeName = active.name.replace(/[^\w-]+/g, '-').toLowerCase();
     downloadCsv(`shopping-${safeName || 'list'}.csv`, rows);
     toast('Shopping list exported.');
+  }
+
+  async function recordAsExpense() {
+    if (!active) return;
+    const total = Number(active.actual_grand_total);
+    if (!total || total <= 0) {
+      toast('Nothing bought yet to record.', 'error');
+      return;
+    }
+    const cat = allCategories.find(
+      (c) => c.type === 'expense' && c.name.toLowerCase().includes('shopping'),
+    );
+    if (!confirm(`Record ${total.toFixed(2)} as an expense${cat ? ` in ${cat.name}` : ''}?`)) return;
+    try {
+      await client.post('/transactions/', {
+        type: 'expense',
+        amount: total,
+        category: cat ? cat.id : null,
+        description: `Shopping: ${active.name}`,
+        date: new Date().toISOString().slice(0, 10),
+      });
+      bump();
+      toast('Recorded as an expense.');
+    } catch {
+      toast('Could not record expense.', 'error');
+    }
   }
 
   function pickFile() {
@@ -417,8 +445,8 @@ export default function Shopping() {
           </select>
         )}
         {active && (
-          <button type="button" className="secondary" onClick={() => deleteList(active.id)} title="Delete list">
-            <Trash2 size={15} />
+          <button type="button" className="secondary" onClick={() => deleteList(active.id)} title="Delete this list">
+            <Trash2 size={15} style={{ verticalAlign: -2 }} /> Delete list
           </button>
         )}
         <button type="button" className="secondary" onClick={pickFile} title="Import a CSV file">
@@ -465,6 +493,9 @@ export default function Shopping() {
             </button>
             <button type="button" className="secondary" onClick={exportCsv} disabled={active.items.length === 0}>
               <Download size={15} style={{ verticalAlign: -2 }} /> Export CSV
+            </button>
+            <button type="button" className="secondary" onClick={recordAsExpense} disabled={boughtCount === 0} title="Add the bought total to your transactions">
+              <Receipt size={15} style={{ verticalAlign: -2 }} /> Record as expense
             </button>
           </div>
 

@@ -1,6 +1,7 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { Wallet, LayoutDashboard, ArrowLeftRight, CalendarDays, PiggyBank, MoreHorizontal } from 'lucide-react';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
+import { Wallet, LayoutDashboard, ArrowLeftRight, CalendarDays, PiggyBank, MoreHorizontal, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import ThemeToggle from './ThemeToggle';
 
 const DESKTOP_LINKS = [
   { to: '/', end: true, label: 'Dashboard', Icon: LayoutDashboard },
@@ -44,6 +45,10 @@ export default function Navbar() {
         </div>
         <div className="navbar-user">
           <span className="navbar-username desktop-only">{user?.username}</span>
+          <Link to="/search" className="secondary icon-btn" title="Search" aria-label="Search">
+            <Search size={17} />
+          </Link>
+          <ThemeToggle />
           <button className="secondary" onClick={handleLogout}>Log out</button>
         </div>
       </nav>
