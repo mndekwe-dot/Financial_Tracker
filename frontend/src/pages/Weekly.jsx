@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import client from '../api/client';
 import { useDataRefresh } from '../context/DataRefreshContext';
-import TransactionFormModal from '../components/TransactionFormModal';
+import DayTransactionsModal from '../components/DayTransactionsModal';
 
 const today = new Date();
 
@@ -25,17 +25,12 @@ export default function Weekly() {
     setYear(y);
   }
 
-  function handleSaved() {
-    bump();
-    setSelectedDate(null);
-  }
-
   return (
     <div>
       <div className="page-header">
         <div>
           <h1>Weekly Breakdown</h1>
-          <p>Monday-Friday spending, grouped by week. Click a day to add a transaction.</p>
+          <p>Monday-Friday spending, grouped by week. Click a day to add or edit transactions.</p>
         </div>
         <div className="filter-bar">
           <button className="secondary" onClick={() => changeMonth(-1)}>‹</button>
@@ -72,11 +67,11 @@ export default function Weekly() {
         </div>
       )}
 
-      <TransactionFormModal
+      <DayTransactionsModal
         open={selectedDate !== null}
-        initialDate={selectedDate}
+        date={selectedDate}
         onClose={() => setSelectedDate(null)}
-        onSaved={handleSaved}
+        onChanged={bump}
       />
     </div>
   );

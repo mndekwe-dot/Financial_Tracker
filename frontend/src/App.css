@@ -1789,6 +1789,119 @@ td .muted {
   grid-column: 1 / -1;
 }
 
+.ussd-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.82rem;
+  margin-right: 0;
+}
+
+button.ussd-item-code {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  color: var(--color-primary);
+  word-break: break-all;
+}
+
+button.ussd-item-code:hover {
+  text-decoration: underline;
+  background: none;
+}
+
+/* Category chip picker (see all categories at once) */
+.cat-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.cat-chip {
+  --chip-color: var(--color-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0;
+  min-height: 0;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.cat-chip:hover {
+  border-color: color-mix(in srgb, var(--chip-color) 50%, var(--color-border));
+  background: var(--color-bg);
+}
+
+.cat-chip.active {
+  border-color: var(--chip-color);
+  background: color-mix(in srgb, var(--chip-color) 16%, transparent);
+  color: var(--chip-color);
+}
+
+.cat-chip-icon {
+  display: inline-flex;
+}
+
+/* Day transactions modal (calendar) */
+.modal-wide {
+  width: min(520px, 100%);
+}
+
+.day-txn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+.day-txn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.day-txn-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.day-txn-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.day-txn-main small {
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+}
+
+.day-txn .icon-btn {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+}
+
 /* Section header count chip */
 .shopping-section-title .section-count {
   display: inline-block;

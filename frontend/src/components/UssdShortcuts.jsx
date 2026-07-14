@@ -40,21 +40,27 @@ export default function UssdShortcuts({ version }) {
               <div key={c.id} className="ussd-item">
                 <div className="ussd-item-main">
                   <span className="ussd-item-label">{c.label}</span>
-                  <code className="ussd-item-code">{c.code}</code>
+                  {/* Tap the code to copy the exact string — dialers mangle '#'. */}
+                  <button type="button" className="ussd-item-code" onClick={() => copy(c.code)} title="Tap to copy">
+                    {c.code}
+                  </button>
                 </div>
                 <div className="ussd-item-actions">
-                  <a className="secondary icon-btn" href={telHref(c.code)} title="Dial code" aria-label="Dial">
+                  <button type="button" className="ussd-copy-btn" onClick={() => copy(c.code)}>
+                    <Copy size={15} /> Copy
+                  </button>
+                  <a className="secondary icon-btn" href={telHref(c.code)} title="Try dialing (may not work for USSD)" aria-label="Dial">
                     <Phone size={16} />
                   </a>
-                  <button type="button" className="secondary icon-btn" onClick={() => copy(c.code)} title="Copy code" aria-label="Copy">
-                    <Copy size={16} />
-                  </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
       ))}
+      <p className="topup-note" style={{ marginTop: '0.4rem' }}>
+        Tip: tap <strong>Copy</strong>, then paste into your phone dialer — that keeps the code exact. Dialing directly can drop the <code>#</code>.
+      </p>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import client from '../api/client';
 import AmountInput from './AmountInput';
+import CategoryPicker from './CategoryPicker';
 import { evaluateExpression } from '../utils/calc';
 
 const buildForm = (date) => ({
@@ -69,12 +70,11 @@ export default function TransactionFormModal({ open, initialDate, onClose, onSav
             required
             autoFocus
           />
-          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-            <option value="">No category</option>
-            {filteredCategories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <CategoryPicker
+            categories={filteredCategories}
+            value={form.category}
+            onChange={(category) => setForm({ ...form, category })}
+          />
           {accounts.length > 0 && (
             <select value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })}>
               <option value="">No account</option>

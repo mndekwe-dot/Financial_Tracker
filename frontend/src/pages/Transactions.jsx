@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import FilterPills from '../components/FilterPills';
+import CategoryPicker from '../components/CategoryPicker';
 import { useUndoableDelete } from '../utils/useUndoableDelete';
 import client from '../api/client';
 import { useDataRefresh } from '../context/DataRefreshContext';
@@ -144,12 +145,11 @@ export default function Transactions() {
           onChange={(amount) => setForm({ ...form, amount })}
           required
         />
-        <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-          <option value="">No category</option>
-          {filteredCategories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <CategoryPicker
+          categories={filteredCategories}
+          value={form.category}
+          onChange={(category) => setForm({ ...form, category })}
+        />
         {accounts.length > 0 && (
           <select value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })}>
             <option value="">No account</option>
