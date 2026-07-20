@@ -7,10 +7,13 @@ import { evaluateExpression } from '../utils/calc';
 import { useUndoableDelete } from '../utils/useUndoableDelete';
 import { useDataRefresh } from '../context/DataRefreshContext';
 
-const EMPTY_FORM = { person: '', amount: '', direction: 'owed_to_me', date: new Date().toISOString().slice(0, 10), note: '' };
+const EMPTY_FORM = {
+  person: '', amount: '', direction: 'owed_to_me', date: new Date().toISOString().slice(0, 10), note: '', account: '',
+};
 
 export default function Loans() {
   const [loans, setLoans] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [summary, setSummary] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
@@ -23,6 +26,7 @@ export default function Loans() {
   function load() {
     client.get('/loans/').then(({ data }) => setLoans(data));
     client.get('/loans/summary/').then(({ data }) => setSummary(data));
+    client.get('/money/accounts/').then(({ data }) => setAccounts(data.filter((a) => !a.archived)));
   }
 
   useEffect(load, [version]);
@@ -36,10 +40,11 @@ export default function Loans() {
       return;
     }
     try {
+      const payload = { ...form, amount, account: form.account || null };
       if (editingId) {
-        await client.patch(`/loans/${editingId}/`, { ...form, amount });
+        await client.patch(`/loans/${editingId}/`, payload);
       } else {
-        await client.post('/loans/', { ...form, amount });
+        await client.post('/loans/', payload);
       }
       setForm(EMPTY_FORM);
       setEditingId(null);
@@ -58,6 +63,7 @@ export default function Loans() {
       direction: loan.direction,
       date: loan.date,
       note: loan.note || '',
+      account: loan.account || '',
     });
     setError('');
   }
@@ -92,7 +98,7 @@ export default function Loans() {
       <div className="page-header">
         <div>
           <h1>Loans</h1>
-          <p>Money lent out or borrowed, separate from regular expenses.</p>
+          <p>Money lent out or borrowed. Automatically tracked in your balance as an expense or income.</p>
         </div>
       </div>
 
@@ -136,6 +142,12 @@ export default function Loans() {
           onChange={(e) => setForm({ ...form, date: e.target.value })}
           required
         />
+        <select value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })}>
+          <option value="">No account</option>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>{a.name}</option>
+          ))}
+        </select>
         <input
           placeholder="Note (optional)"
           value={form.note}
@@ -144,6 +156,10 @@ export default function Loans() {
         <button type="submit">{editingId ? 'Update' : 'Add'}</button>
         {editingId && <button type="button" className="secondary" onClick={cancelEdit}>Cancel</button>}
       </form>
+      <p className="hint">
+        Lending money books it as an expense right away; marking a loan settled books the
+        repayment as income. Borrowing works the other way round.
+      </p>
 
       {loans.length > 0 && (
         <div className="filter-row">

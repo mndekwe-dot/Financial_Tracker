@@ -18,6 +18,11 @@ class LoanViewSet(viewsets.ModelViewSet):
             qs = qs.filter(settled=settled.lower() == 'true')
         return qs
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
 
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
