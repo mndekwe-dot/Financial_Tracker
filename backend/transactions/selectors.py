@@ -129,3 +129,4 @@ def get_weekly_breakdown(user, month=None, year=None):
         monday += timedelta(days=7)
 
     return {'month': month, 'year': year, 'weeks': weeks}
+

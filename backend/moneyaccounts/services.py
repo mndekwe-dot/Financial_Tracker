@@ -57,3 +57,4 @@ def single_account_balance(account):
     moved_out = account.transfers_out.aggregate(t=Sum('amount'))['t'] or Decimal('0')
     moved_in = account.transfers_in.aggregate(t=Sum('amount'))['t'] or Decimal('0')
     return account.opening_balance + income - expense + moved_in - moved_out
+

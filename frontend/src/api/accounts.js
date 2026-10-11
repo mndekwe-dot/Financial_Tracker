@@ -11,3 +11,4 @@ export const accountsApi = {
 };
 
 export default accountsApi;
+

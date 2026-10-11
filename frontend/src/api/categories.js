@@ -8,3 +8,4 @@ export const categoriesApi = {
 };
 
 export default categoriesApi;
+

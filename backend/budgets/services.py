@@ -76,3 +76,4 @@ def compute_budget_context_maps(user, month=None, year=None):
         'spent_map': spent_map,
         'rollover_map': rollover_map,
     }
+
