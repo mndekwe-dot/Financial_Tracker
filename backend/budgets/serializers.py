@@ -8,17 +8,7 @@ from transactions.models import Transaction
 from .models import Budget
 
 
-def spent_for(user, category, month, year):
-    """Total expense in a category for a given month."""
-    total = Transaction.objects.filter(
-        user=user, category=category, type=Transaction.EXPENSE,
-        date__year=year, date__month=month,
-    ).aggregate(total=Sum('amount'))['total']
-    return total or Decimal('0')
-
-
-def prev_month(month, year):
-    return (12, year - 1) if month == 1 else (month - 1, year)
+from .services import spent_for, prev_month
 
 
 class BudgetSerializer(serializers.ModelSerializer):
@@ -38,11 +28,15 @@ class BudgetSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
     def get_spent(self, obj):
+        maps = self.context.get('budget_maps')
+        if maps and 'spent_map' in maps:
+            return maps['spent_map'].get(obj.category_id, Decimal('0'))
         return spent_for(obj.user, obj.category, obj.month, obj.year)
 
     def get_rollover(self, obj):
-        """Leftover (or overspend, as a negative) carried from the previous
-        month's budget for the same category. Zero if there was none."""
+        maps = self.context.get('budget_maps')
+        if maps and 'rollover_map' in maps:
+            return maps['rollover_map'].get(obj.category_id, Decimal('0'))
         pm, py = prev_month(obj.month, obj.year)
         prev = Budget.objects.filter(user=obj.user, category=obj.category, month=pm, year=py).first()
         if not prev:

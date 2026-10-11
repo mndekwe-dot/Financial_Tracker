@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pencil, Check, X } from 'lucide-react';
-import client from '../api/client';
+import { walletApi } from '../api/wallet';
 import { useDataRefresh } from '../context/DataRefreshContext';
 import { formatMoney } from '../utils/currency';
 
@@ -11,7 +11,7 @@ export default function WalletCard() {
   const { version, bump } = useDataRefresh();
 
   function load() {
-    client.get('/wallet/').then(({ data }) => setWallet(data));
+    walletApi.get().then((data) => setWallet(data));
   }
 
   useEffect(load, [version]);
@@ -23,7 +23,7 @@ export default function WalletCard() {
 
   async function saveDepot(e) {
     e.preventDefault();
-    const { data } = await client.patch('/wallet/', { starting_balance: value });
+    const data = await walletApi.update({ starting_balance: value });
     if (!data.queuedOffline) {
       setWallet(data);
     }

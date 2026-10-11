@@ -8,8 +8,11 @@ import {
   TrendingUp, Trophy, CalendarClock, PiggyBank,
   PlusCircle, MinusCircle, ArrowLeftRight, Zap, Landmark
 } from 'lucide-react';
-import client from '../api/client';
+import { transactionsApi } from '../api/transactions';
+import { budgetsApi } from '../api/budgets';
 import { useDataRefresh } from '../context/DataRefreshContext';
+import { useLookups } from '../context/LookupContext';
+import client from '../api/client';
 import WalletCard from '../components/WalletCard';
 import CategoryIcon from '../components/CategoryIcon';
 import TransactionFormModal from '../components/TransactionFormModal';
@@ -23,19 +26,18 @@ function formatCompact(value) {
 export default function Dashboard() {
   const [summary, setSummary] = useState(null);
   const [budgets, setBudgets] = useState([]);
-  const [accounts, setAccounts] = useState([]);
+  const { accounts } = useLookups();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState('expense');
   const { version, bump } = useDataRefresh();
 
+  const activeAccounts = accounts.filter((a) => !a.archived);
+
   useEffect(() => {
-    client.get('/transactions/summary/').then(({ data }) => setSummary(data));
+    transactionsApi.getSummary().then((data) => setSummary(data));
     const now = new Date();
-    client.get('/budgets/', { params: { month: now.getMonth() + 1, year: now.getFullYear() } })
-      .then(({ data }) => setBudgets(data))
-      .catch(() => {});
-    client.get('/money/accounts/')
-      .then(({ data }) => setAccounts(data.filter((a) => !a.archived)))
+    budgetsApi.list({ month: now.getMonth() + 1, year: now.getFullYear() })
+      .then((data) => setBudgets(data))
       .catch(() => {});
   }, [version]);
 
@@ -124,14 +126,14 @@ export default function Dashboard() {
       </div>
 
       {/* Accounts mini overview strip if accounts configured */}
-      {accounts.length > 0 && (
+      {activeAccounts.length > 0 && (
         <div className="accounts-strip">
           <div className="accounts-strip-header">
             <span><Landmark size={15} style={{ verticalAlign: -2, marginRight: 5 }} /> Your Accounts</span>
-            <Link to="/accounts" className="search-more">View all ({accounts.length}) →</Link>
+            <Link to="/accounts" className="search-more">View all ({activeAccounts.length}) →</Link>
           </div>
           <div className="accounts-pill-list">
-            {accounts.map((a) => (
+            {activeAccounts.map((a) => (
               <div key={a.id} className="account-mini-pill" style={{ '--acc-color': a.color }}>
                 <span className="mini-pill-name">{a.name}</span>
                 <span className="mini-pill-balance">{formatMoney(a.balance)}</span>

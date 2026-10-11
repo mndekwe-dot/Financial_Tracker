@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, Wallet, Landmark, Smartphone, PiggyBank, CircleDollarSign, ArrowLeftRight } from 'lucide-react';
-import client from '../api/client';
+import { accountsApi } from '../api/accounts';
 import AmountInput from '../components/AmountInput';
 import { evaluateExpression } from '../utils/calc';
 import { formatMoney } from '../utils/currency';
@@ -33,8 +33,8 @@ export default function Accounts() {
   const undoableDelete = useUndoableDelete();
 
   function load() {
-    client.get('/money/accounts/').then(({ data }) => setAccounts(data));
-    client.get('/money/transfers/').then(({ data }) => setTransfers(data));
+    accountsApi.list().then((data) => setAccounts(data));
+    accountsApi.listTransfers().then((data) => setTransfers(data));
   }
 
   useEffect(load, [version]);
@@ -48,7 +48,7 @@ export default function Accounts() {
       return;
     }
     try {
-      await client.post('/money/accounts/', { ...acctForm, opening_balance: opening });
+      await accountsApi.create({ ...acctForm, opening_balance: opening });
       setAcctForm(EMPTY_ACCOUNT);
       setShowAcct(false);
       bump();
@@ -64,7 +64,7 @@ export default function Accounts() {
       label: 'Account',
       remove: () => setAccounts((cur) => cur.filter((x) => x.id !== account.id)),
       restore: () => load(),
-      doDelete: async () => { await client.delete(`/money/accounts/${account.id}/`); bump(); },
+      doDelete: async () => { await accountsApi.delete(account.id); bump(); },
     });
   }
 
@@ -81,7 +81,7 @@ export default function Accounts() {
       return;
     }
     try {
-      await client.post('/money/transfers/', { ...xferForm, amount });
+      await accountsApi.createTransfer({ ...xferForm, amount });
       setXferForm(EMPTY_TRANSFER);
       setShowXfer(false);
       bump();

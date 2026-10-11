@@ -7,14 +7,7 @@ from transactions.models import Transaction
 from .models import Account, Transfer
 
 
-def account_balance(account):
-    """Opening balance adjusted by this account's transactions and transfers."""
-    txns = Transaction.objects.filter(account=account)
-    income = txns.filter(type=Transaction.INCOME).aggregate(t=Sum('amount'))['t'] or Decimal('0')
-    expense = txns.filter(type=Transaction.EXPENSE).aggregate(t=Sum('amount'))['t'] or Decimal('0')
-    moved_out = account.transfers_out.aggregate(t=Sum('amount'))['t'] or Decimal('0')
-    moved_in = account.transfers_in.aggregate(t=Sum('amount'))['t'] or Decimal('0')
-    return account.opening_balance + income - expense + moved_in - moved_out
+from .services import single_account_balance, compute_account_balances
 
 
 class AccountSerializer(serializers.ModelSerializer):
@@ -27,7 +20,15 @@ class AccountSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
     def get_balance(self, obj):
-        return account_balance(obj)
+        maps = self.context.get('balance_maps')
+        if maps:
+            acc_id = obj.id
+            inc = maps['income'].get(acc_id, Decimal('0'))
+            exp = maps['expense'].get(acc_id, Decimal('0'))
+            tin = maps['transfers_in'].get(acc_id, Decimal('0'))
+            tout = maps['transfers_out'].get(acc_id, Decimal('0'))
+            return obj.opening_balance + inc - exp + tin - tout
+        return single_account_balance(obj)
 
 
 class TransferSerializer(serializers.ModelSerializer):

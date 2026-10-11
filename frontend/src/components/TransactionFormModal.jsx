@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, ArrowDownLeft } from 'lucide-react';
-import client from '../api/client';
+import { transactionsApi } from '../api/transactions';
+import { useLookups } from '../context/LookupContext';
 import AmountInput from './AmountInput';
 import CategoryPicker from './CategoryPicker';
 import { evaluateExpression } from '../utils/calc';
@@ -25,8 +26,7 @@ const buildForm = (date, type = 'expense') => ({
 const QUICK_AMOUNTS = [5, 10, 20, 50, 100];
 
 export default function TransactionFormModal({ open, initialDate, initialType = 'expense', onClose, onSaved }) {
-  const [categories, setCategories] = useState([]);
-  const [accounts, setAccounts] = useState([]);
+  const { categories, accounts } = useLookups();
   const [form, setForm] = useState(() => buildForm(initialDate, initialType));
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -35,8 +35,6 @@ export default function TransactionFormModal({ open, initialDate, initialType = 
     if (open) {
       setForm(buildForm(initialDate, initialType));
       setError('');
-      client.get('/categories/').then(({ data }) => setCategories(data));
-      client.get('/money/accounts/').then(({ data }) => setAccounts(data));
     }
   }, [open, initialDate, initialType]);
 
@@ -64,7 +62,7 @@ export default function TransactionFormModal({ open, initialDate, initialType = 
     }
     setSubmitting(true);
     try {
-      await client.post('/transactions/', {
+      await transactionsApi.create({
         ...form,
         amount,
         category: form.category || null,

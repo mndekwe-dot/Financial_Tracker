@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { DataRefreshProvider } from './context/DataRefreshContext';
 import { ToastProvider } from './context/ToastContext';
+import { LookupProvider } from './context/LookupContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import OfflineBanner from './components/OfflineBanner';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -44,9 +45,10 @@ export default function App() {
       <AuthProvider>
         <DataRefreshProvider>
           <ToastProvider>
-            <OfflineBanner />
-            <ErrorBoundary>
-              <Suspense fallback={<PageLoader />}>
+            <LookupProvider>
+              <OfflineBanner />
+              <ErrorBoundary>
+                <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
@@ -73,8 +75,9 @@ export default function App() {
                 </Routes>
               </Suspense>
             </ErrorBoundary>
-          </ToastProvider>
-        </DataRefreshProvider>
+          </LookupProvider>
+        </ToastProvider>
+      </DataRefreshProvider>
       </AuthProvider>
     </BrowserRouter>
   );

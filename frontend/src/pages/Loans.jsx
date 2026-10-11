@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Pencil, Trash2 } from 'lucide-react';
-import client from '../api/client';
+import { loansApi } from '../api/loans';
+import { useLookups } from '../context/LookupContext';
 import AmountInput from '../components/AmountInput';
 import FilterPills from '../components/FilterPills';
 import { evaluateExpression } from '../utils/calc';
@@ -14,7 +15,8 @@ const EMPTY_FORM = {
 
 export default function Loans() {
   const [loans, setLoans] = useState([]);
-  const [accounts, setAccounts] = useState([]);
+  const { accounts } = useLookups();
+  const activeAccounts = accounts.filter((a) => !a.archived);
   const [summary, setSummary] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
@@ -25,9 +27,8 @@ export default function Loans() {
   const undoableDelete = useUndoableDelete();
 
   function load() {
-    client.get('/loans/').then(({ data }) => setLoans(data));
-    client.get('/loans/summary/').then(({ data }) => setSummary(data));
-    client.get('/money/accounts/').then(({ data }) => setAccounts(data.filter((a) => !a.archived)));
+    loansApi.list().then((data) => setLoans(data));
+    loansApi.summary().then((data) => setSummary(data));
   }
 
   useEffect(load, [version]);
@@ -43,9 +44,9 @@ export default function Loans() {
     try {
       const payload = { ...form, amount, account: form.account || null };
       if (editingId) {
-        await client.patch(`/loans/${editingId}/`, payload);
+        await loansApi.update(editingId, payload);
       } else {
-        await client.post('/loans/', payload);
+        await loansApi.create(payload);
       }
       setForm(EMPTY_FORM);
       setEditingId(null);
@@ -76,7 +77,7 @@ export default function Loans() {
   }
 
   async function toggleSettled(loan) {
-    await client.patch(`/loans/${loan.id}/`, { settled: !loan.settled });
+    await loansApi.update(loan.id, { settled: !loan.settled });
     bump();
   }
 
@@ -85,7 +86,7 @@ export default function Loans() {
       label: 'Loan',
       remove: () => setLoans((cur) => cur.filter((x) => x.id !== loan.id)),
       restore: () => load(),
-      doDelete: async () => { await client.delete(`/loans/${loan.id}/`); bump(); },
+      doDelete: async () => { await loansApi.delete(loan.id); bump(); },
     });
   }
 
@@ -145,7 +146,7 @@ export default function Loans() {
         />
         <select value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })}>
           <option value="">No account</option>
-          {accounts.map((a) => (
+          {activeAccounts.map((a) => (
             <option key={a.id} value={a.id}>{a.name}</option>
           ))}
         </select>

@@ -25,6 +25,16 @@ class BudgetViewSet(viewsets.ModelViewSet):
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['request'] = self.request
+        params = self.request.query_params
+        if self.request.user and self.request.user.is_authenticated:
+            try:
+                m = int(params.get('month', 0))
+                y = int(params.get('year', 0))
+                if m and y:
+                    from .services import compute_budget_context_maps
+                    context['budget_maps'] = compute_budget_context_maps(self.request.user, m, y)
+            except (TypeError, ValueError):
+                pass
         return context
 
     @action(detail=False, methods=['post'])

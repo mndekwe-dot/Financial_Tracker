@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { FileDown, PiggyBank, ArrowLeftRight, HandCoins, LayoutDashboard } from 'lucide-react';
-import client from '../api/client';
+import { budgetsApi } from '../api/budgets';
+import { transactionsApi } from '../api/transactions';
+import { loansApi } from '../api/loans';
 import { downloadCsv } from '../utils/csv';
 
 const today = new Date();
@@ -41,7 +43,7 @@ export default function Reports() {
 
   function exportBudgets() {
     return run('budgets', async () => {
-      const { data } = await client.get('/budgets/', { params: { month, year } });
+      const data = await budgetsApi.list({ month, year });
       const rows = [
         [`Budget report - ${monthLabel}`],
         [],
@@ -71,8 +73,9 @@ export default function Reports() {
   function exportTransactions() {
     return run('transactions', async () => {
       const lastDay = new Date(year, month, 0).getDate();
-      const { data } = await client.get('/transactions/', {
-        params: { start_date: `${period}-01`, end_date: `${period}-${lastDay}` },
+      const data = await transactionsApi.list({
+        start_date: `${period}-01`,
+        end_date: `${period}-${lastDay}`,
       });
       const rows = [
         [`Transactions report - ${monthLabel}`],
@@ -97,7 +100,7 @@ export default function Reports() {
 
   function exportSummary() {
     return run('summary', async () => {
-      const { data } = await client.get('/transactions/summary/', { params: { month, year } });
+      const data = await transactionsApi.getSummary({ month, year });
       const rows = [
         [`Monthly summary - ${monthLabel}`],
         [],
@@ -124,9 +127,9 @@ export default function Reports() {
 
   function exportLoans() {
     return run('loans', async () => {
-      const [{ data: loans }, { data: summary }] = await Promise.all([
-        client.get('/loans/'),
-        client.get('/loans/summary/'),
+      const [loans, summary] = await Promise.all([
+        loansApi.list(),
+        loansApi.summary(),
       ]);
       const rows = [
         ['Loans report'],

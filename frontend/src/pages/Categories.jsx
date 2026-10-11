@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import client from '../api/client';
+import { useState } from 'react';
+import { categoriesApi } from '../api/categories';
+import { useLookups } from '../context/LookupContext';
 import IconPicker from '../components/IconPicker';
 import CategoryIcon from '../components/CategoryIcon';
 import FilterPills from '../components/FilterPills';
@@ -9,31 +10,25 @@ import { CATEGORY_ICONS } from '../constants/icons';
 const EMPTY_FORM = { name: '', type: 'expense', color: '#6366f1', icon: CATEGORY_ICONS[0] };
 
 export default function Categories() {
-  const [categories, setCategories] = useState([]);
+  const { categories, refreshCategories } = useLookups();
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
   const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'expense' | 'income'
   const undoableDelete = useUndoableDelete();
 
-  function loadCategories() {
-    client.get('/categories/').then(({ data }) => setCategories(data));
-  }
-
-  useEffect(loadCategories, []);
-
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     try {
       if (editingId) {
-        await client.put(`/categories/${editingId}/`, form);
+        await categoriesApi.update(editingId, form);
       } else {
-        await client.post('/categories/', form);
+        await categoriesApi.create(form);
       }
       setForm(EMPTY_FORM);
       setEditingId(null);
-      loadCategories();
+      refreshCategories();
     } catch (err) {
       const data = err.response?.data;
       setError(data ? Object.values(data).flat().join(' ') : 'Save failed.');
@@ -48,9 +43,9 @@ export default function Categories() {
   function handleDelete(c) {
     undoableDelete({
       label: 'Category',
-      remove: () => setCategories((cur) => cur.filter((x) => x.id !== c.id)),
-      restore: () => loadCategories(),
-      doDelete: () => client.delete(`/categories/${c.id}/`),
+      remove: () => refreshCategories(),
+      restore: () => refreshCategories(),
+      doDelete: async () => { await categoriesApi.delete(c.id); refreshCategories(); },
     });
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import client from '../api/client';
+import { transactionsApi } from '../api/transactions';
 import { useDataRefresh } from '../context/DataRefreshContext';
 import DayTransactionsModal from '../components/DayTransactionsModal';
 import { TableSkeleton } from '../components/Skeleton';
@@ -17,8 +17,8 @@ export default function Weekly() {
 
   useEffect(() => {
     setLoading(true);
-    client.get('/transactions/weekly/', { params: { month, year } })
-      .then(({ data }) => setData(data))
+    transactionsApi.getWeekly({ month, year })
+      .then((data) => setData(data))
       .finally(() => setLoading(false));
   }, [month, year, version]);
 

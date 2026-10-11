@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Copy } from 'lucide-react';
-import client from '../api/client';
+import { budgetsApi } from '../api/budgets';
 import { useDataRefresh } from '../context/DataRefreshContext';
+import { useLookups } from '../context/LookupContext';
 import { useToast } from '../context/ToastContext';
 import CategoryIcon from '../components/CategoryIcon';
 import AmountInput from '../components/AmountInput';
@@ -15,7 +16,8 @@ const prevMonth = (m, y) => (m === 1 ? { m: 12, y: y - 1 } : { m: m - 1, y });
 
 export default function Budgets() {
   const [budgets, setBudgets] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const { categories: allCategories } = useLookups();
+  const categories = allCategories.filter((c) => c.type === 'expense');
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
@@ -25,14 +27,8 @@ export default function Budgets() {
   const toast = useToast();
 
   function loadBudgets() {
-    client.get('/budgets/', { params: { month, year } }).then(({ data }) => setBudgets(data));
+    budgetsApi.list({ month, year }).then((data) => setBudgets(data));
   }
-
-  useEffect(() => {
-    client.get('/categories/', { params: { type: 'expense' } }).then(({ data }) =>
-      setCategories(data.filter((c) => c.type === 'expense'))
-    );
-  }, []);
 
   useEffect(loadBudgets, [version, month, year]);
 
@@ -58,9 +54,9 @@ export default function Budgets() {
     const payload = { category: form.category, amount, month, year };
     try {
       if (editingId) {
-        await client.put(`/budgets/${editingId}/`, payload);
+        await budgetsApi.update(editingId, payload);
       } else {
-        await client.post('/budgets/', payload);
+        await budgetsApi.create(payload);
       }
       setForm(EMPTY_FORM);
       setEditingId(null);
@@ -78,7 +74,7 @@ export default function Budgets() {
 
   async function handleDelete(id) {
     if (!confirm('Delete this budget?')) return;
-    await client.delete(`/budgets/${id}/`);
+    await budgetsApi.delete(id);
     bump();
   }
 
@@ -90,7 +86,7 @@ export default function Budgets() {
   async function copyFromPrevious() {
     const { m: fm, y: fy } = prevMonth(month, year);
     try {
-      const { data } = await client.post('/budgets/copy/', {
+      const data = await budgetsApi.copy({
         from_month: fm, from_year: fy, to_month: month, to_year: year,
       });
       bump();

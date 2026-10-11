@@ -3,8 +3,9 @@ import { Plus, Search, X } from 'lucide-react';
 import FilterPills from '../components/FilterPills';
 import CategoryPicker from '../components/CategoryPicker';
 import { useUndoableDelete } from '../utils/useUndoableDelete';
-import client from '../api/client';
+import { transactionsApi } from '../api/transactions';
 import { useDataRefresh } from '../context/DataRefreshContext';
+import { useLookups } from '../context/LookupContext';
 import CategoryIcon from '../components/CategoryIcon';
 import AmountInput from '../components/AmountInput';
 import TransactionFormModal from '../components/TransactionFormModal';
@@ -29,8 +30,7 @@ function monthBounds(year, month) {
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [accounts, setAccounts] = useState([]);
+  const { categories, accounts } = useLookups();
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -48,15 +48,10 @@ export default function Transactions() {
     const params = { ...monthBounds(year, month) };
     if (filterType) params.type = filterType;
     if (filterCategory) params.category = filterCategory;
-    client.get('/transactions/', { params })
-      .then(({ data }) => setTransactions(data))
+    transactionsApi.list(params)
+      .then((data) => setTransactions(data))
       .finally(() => setLoading(false));
   }
-
-  useEffect(() => {
-    client.get('/categories/').then(({ data }) => setCategories(data));
-    client.get('/money/accounts/').then(({ data }) => setAccounts(data));
-  }, []);
 
   useEffect(loadTransactions, [filterType, filterCategory, version, month, year]);
 
@@ -109,7 +104,7 @@ export default function Transactions() {
     if (!amount || amount <= 0) return;
     const payload = { ...form, amount, category: form.category || null, account: form.account || null };
     try {
-      await client.put(`/transactions/${editingId}/`, payload);
+      await transactionsApi.update(editingId, payload);
       setEditingId(null);
       setForm(EMPTY_FORM);
       bump();
@@ -123,7 +118,7 @@ export default function Transactions() {
       label: 'Transaction',
       remove: () => setTransactions((cur) => cur.filter((x) => x.id !== t.id)),
       restore: () => loadTransactions(),
-      doDelete: async () => { await client.delete(`/transactions/${t.id}/`); bump(); },
+      doDelete: async () => { await transactionsApi.delete(t.id); bump(); },
     });
   }
 
