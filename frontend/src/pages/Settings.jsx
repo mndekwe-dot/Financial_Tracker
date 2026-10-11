@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, KeyRound, Palette, Coins, Download, Trash2, Phone } from 'lucide-react';
+import { User, KeyRound, Palette, Coins, Download, Trash2, Phone, Upload, Smartphone } from 'lucide-react';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useDataRefresh } from '../context/DataRefreshContext';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import UssdManager from '../components/UssdManager';
+import InstallAppButton from '../components/InstallAppButton';
 import { getTheme, applyTheme } from '../utils/theme';
 import { getCurrency, setCurrency } from '../utils/currency';
 
@@ -18,6 +20,7 @@ const CURRENCIES = ['', '$', '€', '£', '₦', 'R', 'RWF ', 'KES ', 'UGX ', '�
 
 export default function Settings() {
   const { user, logout } = useAuth();
+  const { bump } = useDataRefresh();
   const navigate = useNavigate();
   const toast = useToast();
   const [profile, setProfile] = useState({ username: user?.username || '', email: user?.email || '' });
@@ -25,6 +28,26 @@ export default function Settings() {
   const [showPassword, setShowPassword] = useState(false);
   const [theme, setTheme] = useState(getTheme());
   const [currency, setCurrencyState] = useState(getCurrency());
+  const [importing, setImporting] = useState(false);
+
+  async function handleImportFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setImporting(true);
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const { data } = await client.post('/import/', json);
+      toast(data.detail || 'Data restored successfully!');
+      bump();
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'Import failed. Check JSON format.';
+      toast(msg, 'error');
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
+  }
 
   async function saveProfile(e) {
     e.preventDefault();
@@ -140,9 +163,22 @@ export default function Settings() {
         </section>
 
         <section className="settings-card">
-          <h2><Download size={17} /> Your data</h2>
-          <p className="settings-note">Download a full JSON backup of everything in your account.</p>
-          <button type="button" className="secondary" onClick={exportData}>Export data</button>
+          <h2><Smartphone size={17} /> Offline App</h2>
+          <p className="settings-note">Download and install this app to your device for instant offline access and home screen launch.</p>
+          <InstallAppButton showInstalled />
+        </section>
+
+        <section className="settings-card">
+          <h2><Download size={17} /> Backup & Restore</h2>
+          <p className="settings-note">Download a full JSON backup of everything in your account or restore from a previous backup file.</p>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+            <button type="button" className="secondary" onClick={exportData}>Export backup</button>
+            <label className="secondary button-like-label" style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', margin: 0 }}>
+              <Upload size={15} style={{ marginRight: 6 }} />
+              {importing ? 'Importing…' : 'Restore backup'}
+              <input type="file" accept=".json,application/json" onChange={handleImportFile} style={{ display: 'none' }} disabled={importing} />
+            </label>
+          </div>
         </section>
 
         <section className="settings-card danger-zone">

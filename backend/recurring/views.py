@@ -1,5 +1,5 @@
 from datetime import date
-
+from django.db import transaction as db_transaction
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -22,20 +22,26 @@ class RecurringTransactionViewSet(viewsets.ModelViewSet):
         catching up if several periods were missed."""
         today = date.today()
         created = 0
-        due = RecurringTransaction.objects.filter(user=request.user, active=True, next_date__lte=today)
-        for r in due:
-            guard = 0
-            while r.next_date <= today and guard < 60:
-                Transaction.objects.create(
-                    user=request.user,
-                    category=r.category,
-                    type=r.type,
-                    amount=r.amount,
-                    description=r.description,
-                    date=r.next_date,
-                )
-                r.advance()
-                created += 1
-                guard += 1
-            r.save()
+        with db_transaction.atomic():
+            due = (
+                RecurringTransaction.objects
+                .select_for_update()
+                .filter(user=request.user, active=True, next_date__lte=today)
+            )
+            for r in due:
+                guard = 0
+                while r.next_date <= today and guard < 60:
+                    Transaction.objects.create(
+                        user=request.user,
+                        category=r.category,
+                        type=r.type,
+                        amount=r.amount,
+                        description=r.description,
+                        date=r.next_date,
+                    )
+                    r.advance()
+                    created += 1
+                    guard += 1
+                r.save()
         return Response({'created': created})
+

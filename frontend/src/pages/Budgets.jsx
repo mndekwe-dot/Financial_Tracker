@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import CategoryIcon from '../components/CategoryIcon';
 import AmountInput from '../components/AmountInput';
 import { evaluateExpression } from '../utils/calc';
+import { formatMoney } from '../utils/currency';
 
 const today = new Date();
 const EMPTY_FORM = { category: '', amount: '' };
@@ -164,18 +165,18 @@ export default function Budgets() {
           <div className="budget-summary-head">
             <span>Spent this month</span>
             <strong className={totalOver ? 'amount-expense' : ''}>
-              {totals.spent.toFixed(2)} / {totals.available.toFixed(2)}
+              {formatMoney(totals.spent)} / {formatMoney(totals.available)}
             </strong>
           </div>
           <div className="progress-bar">
             <div className={`progress-fill ${totalOver ? 'over' : ''}`} style={{ width: `${totalPct}%` }} />
           </div>
           <div className="budget-summary-foot">
-            <span>Budgeted {totals.budgeted.toFixed(2)}</span>
+            <span>Budgeted {formatMoney(totals.budgeted)}</span>
             <span className={totalOver ? 'amount-expense' : 'amount-income'}>
               {totalOver
-                ? `${(totals.spent - totals.available).toFixed(2)} over`
-                : `${(totals.available - totals.spent).toFixed(2)} left`}
+                ? `${formatMoney(totals.spent - totals.available)} over`
+                : `${formatMoney(totals.available - totals.spent)} left`}
             </span>
           </div>
         </div>
@@ -217,16 +218,16 @@ export default function Budgets() {
                 />
               </div>
               <div className="budget-card-footer">
-                <span>{spent.toFixed(2)} / {available.toFixed(2)}</span>
+                <span>{formatMoney(spent)} / {formatMoney(available)}</span>
                 <span className={over ? 'amount-expense' : 'amount-income'}>
-                  {over ? `${Math.abs(difference).toFixed(2)} over` : `${difference.toFixed(2)} left`}
+                  {over ? `${formatMoney(Math.abs(difference))} over` : `${formatMoney(difference)} left`}
                 </span>
               </div>
               {rollover !== 0 && (
                 <div className="budget-rollover">
-                  budget {amount.toFixed(2)}
+                  budget {formatMoney(amount)}
                   <span className={rollover > 0 ? 'amount-income' : 'amount-expense'}>
-                    {' '}{rollover > 0 ? '+' : '−'}{Math.abs(rollover).toFixed(2)} rollover
+                    {' '}{rollover > 0 ? '+' : '−'}{formatMoney(Math.abs(rollover))} rollover
                   </span>
                 </div>
               )}

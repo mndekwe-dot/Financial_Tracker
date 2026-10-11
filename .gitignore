@@ -7,3 +7,7 @@ frontend/node_modules/
 frontend/dist/
 backend/staticfiles/
 .env
+.idea/
+.vscode/
+*.swp
+

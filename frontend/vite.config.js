@@ -8,6 +8,9 @@ export default defineConfig(({ command }) => ({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      devOptions: {
+        enabled: true,
+      },
       // Registration is done manually in main.jsx with scope '/', because the
       // build is served under /static/ but the app runs at the site root.
       injectRegister: false,
@@ -21,11 +24,16 @@ export default defineConfig(({ command }) => ({
         background_color: '#0f172a',
         theme_color: '#4f46e5',
         icons: [
-          { src: '/static/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          {
+            src: command === 'build' ? '/static/favicon.svg' : '/favicon.svg',
+            sizes: '192x192 512x512 any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
         ],
       },
       workbox: {
-        navigateFallback: '/static/index.html',
+        navigateFallback: command === 'build' ? '/static/index.html' : '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/admin/],
         runtimeCaching: [
           {

@@ -6,6 +6,7 @@ import FilterPills from '../components/FilterPills';
 import { evaluateExpression } from '../utils/calc';
 import { useUndoableDelete } from '../utils/useUndoableDelete';
 import { useDataRefresh } from '../context/DataRefreshContext';
+import { formatMoney } from '../utils/currency';
 
 const EMPTY_FORM = {
   person: '', amount: '', direction: 'owed_to_me', date: new Date().toISOString().slice(0, 10), note: '', account: '',
@@ -106,15 +107,15 @@ export default function Loans() {
         <div className="loan-summary-cards">
           <div className="summary-card income">
             <span>Owed to me</span>
-            <strong>{Number(summary.owed_to_me).toFixed(2)}</strong>
+            <strong>{formatMoney(summary.owed_to_me)}</strong>
           </div>
           <div className="summary-card expense">
             <span>I owe</span>
-            <strong>{Number(summary.i_owe).toFixed(2)}</strong>
+            <strong>{formatMoney(summary.i_owe)}</strong>
           </div>
           <div className="summary-card balance">
             <span>Net</span>
-            <strong>{Number(summary.net).toFixed(2)}</strong>
+            <strong>{formatMoney(summary.net)}</strong>
           </div>
         </div>
       )}
@@ -206,7 +207,7 @@ export default function Loans() {
                 </span>
               </td>
               <td data-label="Amount" className={loan.direction === 'owed_to_me' ? 'amount-income' : 'amount-expense'}>
-                {Number(loan.amount).toFixed(2)}
+                {formatMoney(loan.amount)}
               </td>
               <td data-label="Date">{loan.date}</td>
               <td>

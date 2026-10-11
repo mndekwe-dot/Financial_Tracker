@@ -4,11 +4,17 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
 } from 'recharts';
 import { Link } from 'react-router-dom';
-import { TrendingUp, Trophy, CalendarClock, PiggyBank } from 'lucide-react';
+import {
+  TrendingUp, Trophy, CalendarClock, PiggyBank,
+  PlusCircle, MinusCircle, ArrowLeftRight, Zap, Landmark
+} from 'lucide-react';
 import client from '../api/client';
 import { useDataRefresh } from '../context/DataRefreshContext';
 import WalletCard from '../components/WalletCard';
 import CategoryIcon from '../components/CategoryIcon';
+import TransactionFormModal from '../components/TransactionFormModal';
+import { DashboardSkeleton } from '../components/Skeleton';
+import { formatMoney } from '../utils/currency';
 
 function formatCompact(value) {
   return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
@@ -17,6 +23,9 @@ function formatCompact(value) {
 export default function Dashboard() {
   const [summary, setSummary] = useState(null);
   const [budgets, setBudgets] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState('expense');
   const { version, bump } = useDataRefresh();
 
   useEffect(() => {
@@ -24,6 +33,9 @@ export default function Dashboard() {
     const now = new Date();
     client.get('/budgets/', { params: { month: now.getMonth() + 1, year: now.getFullYear() } })
       .then(({ data }) => setBudgets(data))
+      .catch(() => {});
+    client.get('/money/accounts/')
+      .then(({ data }) => setAccounts(data.filter((a) => !a.archived)))
       .catch(() => {});
   }, [version]);
 
@@ -35,7 +47,17 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!summary) return <div className="loading">Loading...</div>;
+  function openAddModal(type) {
+    setModalType(type);
+    setModalOpen(true);
+  }
+
+  function handleModalSaved() {
+    setModalOpen(false);
+    bump();
+  }
+
+  if (!summary) return <DashboardSkeleton />;
 
   const pieData = summary.by_category.map((c) => ({
     name: c.category__name ?? 'Uncategorized',
@@ -67,24 +89,70 @@ export default function Dashboard() {
       <div className="page-header">
         <div>
           <h1>Dashboard</h1>
-          <p>Your spending at a glance.</p>
+          <p>Your spending, balance and financial progress at a glance.</p>
         </div>
       </div>
 
       <WalletCard />
 
+      {/* 1-Tap Quick Action Bar */}
+      <div className="dashboard-quick-actions">
+        <button
+          type="button"
+          className="dash-action-btn expense-btn"
+          onClick={() => openAddModal('expense')}
+        >
+          <MinusCircle size={18} />
+          <span>Add Expense</span>
+        </button>
+        <button
+          type="button"
+          className="dash-action-btn income-btn"
+          onClick={() => openAddModal('income')}
+        >
+          <PlusCircle size={18} />
+          <span>Add Income</span>
+        </button>
+        <Link to="/accounts" className="dash-action-btn transfer-btn">
+          <ArrowLeftRight size={18} />
+          <span>Transfer</span>
+        </Link>
+        <Link to="/pay" className="dash-action-btn pay-btn">
+          <Zap size={18} />
+          <span>Quick Pay</span>
+        </Link>
+      </div>
+
+      {/* Accounts mini overview strip if accounts configured */}
+      {accounts.length > 0 && (
+        <div className="accounts-strip">
+          <div className="accounts-strip-header">
+            <span><Landmark size={15} style={{ verticalAlign: -2, marginRight: 5 }} /> Your Accounts</span>
+            <Link to="/accounts" className="search-more">View all ({accounts.length}) →</Link>
+          </div>
+          <div className="accounts-pill-list">
+            {accounts.map((a) => (
+              <div key={a.id} className="account-mini-pill" style={{ '--acc-color': a.color }}>
+                <span className="mini-pill-name">{a.name}</span>
+                <span className="mini-pill-balance">{formatMoney(a.balance)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="summary-cards">
         <div className="summary-card income">
-          <span>Income</span>
-          <strong>{Number(summary.total_income).toFixed(2)}</strong>
+          <span>Income (This Month)</span>
+          <strong>{formatMoney(summary.total_income)}</strong>
         </div>
         <div className="summary-card expense">
-          <span>Expense</span>
-          <strong>{Number(summary.total_expense).toFixed(2)}</strong>
+          <span>Expense (This Month)</span>
+          <strong>{formatMoney(summary.total_expense)}</strong>
         </div>
         <div className="summary-card balance">
-          <span>Balance</span>
-          <strong>{Number(summary.balance).toFixed(2)}</strong>
+          <span>Net Savings / Balance</span>
+          <strong>{formatMoney(summary.balance)}</strong>
         </div>
       </div>
 
@@ -93,7 +161,7 @@ export default function Dashboard() {
           <span className="stat-icon"><TrendingUp size={17} /></span>
           <div className="stat-card-body">
             <span>Avg daily spend</span>
-            <strong>{Number(summary.avg_daily_expense).toFixed(2)}</strong>
+            <strong>{formatMoney(summary.avg_daily_expense)}</strong>
           </div>
         </div>
         <div className="stat-card">
@@ -119,7 +187,7 @@ export default function Dashboard() {
           <div className="dash-budgets-head">
             <h2><PiggyBank size={17} style={{ verticalAlign: -3 }} /> Budgets this month</h2>
             <div className="dash-budgets-meta">
-              {overCount > 0 && <span className="amount-expense">{overCount} over</span>}
+              {overCount > 0 && <span className="amount-expense">{overCount} over limit</span>}
               <Link to="/budgets" className="search-more">Manage →</Link>
             </div>
           </div>
@@ -133,7 +201,7 @@ export default function Dashboard() {
                     style={{ width: `${b.available > 0 ? Math.min(100, b.ratio * 100) : 0}%` }}
                   />
                 </div>
-                <span className="dash-budget-num">{b.spent.toFixed(0)}/{b.available.toFixed(0)}</span>
+                <span className="dash-budget-num">{formatMoney(b.spent)} / {formatMoney(b.available)}</span>
               </div>
             ))}
           </div>
@@ -144,7 +212,7 @@ export default function Dashboard() {
         <div className="chart-card">
           <h2>Spending by Category</h2>
           {pieData.length === 0 ? (
-            <p>No expenses this month.</p>
+            <p className="shop-empty">No expenses this month yet.</p>
           ) : (
             <>
               <div className="donut-wrapper">
@@ -155,12 +223,12 @@ export default function Dashboard() {
                         <Cell key={index} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip formatter={(value) => formatMoney(value)} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="donut-center">
                   <strong>{formatCompact(summary.total_expense)}</strong>
-                  <span>Total Spending</span>
+                  <span>Total Spent</span>
                 </div>
               </div>
               <ul className="chart-legend">
@@ -170,7 +238,7 @@ export default function Dashboard() {
                       <CategoryIcon name={entry.icon} size={12} />
                     </span>
                     {entry.name}
-                    <span className="chart-legend-value">{entry.value.toFixed(2)}</span>
+                    <span className="chart-legend-value">{formatMoney(entry.value)}</span>
                   </li>
                 ))}
               </ul>
@@ -185,7 +253,7 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" fontSize={11} />
               <YAxis fontSize={11} />
-              <Tooltip />
+              <Tooltip formatter={(value) => formatMoney(value)} />
               <Legend />
               <Bar dataKey="Income" fill="#22c55e" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} />
@@ -193,6 +261,13 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
       </div>
+
+      <TransactionFormModal
+        open={modalOpen}
+        initialType={modalType}
+        onClose={() => setModalOpen(false)}
+        onSaved={handleModalSaved}
+      />
     </div>
   );
 }

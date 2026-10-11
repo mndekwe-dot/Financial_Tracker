@@ -109,7 +109,7 @@ def summary(request):
     })
 
 
-WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 
 @api_view(['GET'])
@@ -128,14 +128,14 @@ def weekly_breakdown(request):
         user=request.user,
         type=Transaction.EXPENSE,
         date__gte=first_monday,
-        date__lte=last_monday + timedelta(days=4),
+        date__lte=last_monday + timedelta(days=6),
     ).values('date').annotate(total=Sum('amount'))
     totals_by_date = {row['date']: row['total'] for row in expenses}
 
     weeks = []
     monday = first_monday
     while monday <= last_monday:
-        friday = monday + timedelta(days=4)
+        sunday = monday + timedelta(days=6)
         days = []
         week_total = 0
         for i, weekday_name in enumerate(WEEKDAY_NAMES):
@@ -144,18 +144,19 @@ def weekly_breakdown(request):
             week_total += total
             days.append({'weekday': weekday_name, 'date': d, 'total': total})
 
-        if monday.month == friday.month:
-            label = f'{monday.day:02d}-{friday.day:02d}/{monday.month:02d}'
+        if monday.month == sunday.month:
+            label = f'{monday.day:02d}-{sunday.day:02d}/{monday.month:02d}'
         else:
-            label = f'{monday.day:02d}-{friday.day:02d}/{monday.month:02d}-{friday.month:02d}'
+            label = f'{monday.day:02d}-{sunday.day:02d}/{monday.month:02d}-{sunday.month:02d}'
 
         weeks.append({
             'label': label,
             'start': monday,
-            'end': friday,
+            'end': sunday,
             'days': days,
             'total': week_total,
         })
         monday += timedelta(days=7)
 
     return Response({'month': month, 'year': year, 'weeks': weeks})
+

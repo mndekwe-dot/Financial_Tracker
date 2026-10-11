@@ -12,10 +12,10 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-// Offline support: the service worker lives under /static/ but controls the
-// whole site (Django sends Service-Worker-Allowed: / for it).
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// Offline support: registers the service worker to cache assets and offline API responses.
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/static/sw.js', { scope: '/' }).catch(() => {});
+    const swPath = import.meta.env.PROD ? '/static/sw.js' : '/sw.js';
+    navigator.serviceWorker.register(swPath, { scope: '/' }).catch(() => {});
   });
 }

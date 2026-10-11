@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, Phone } from 'lucide-react';
 import client from '../api/client';
-import { useToast } from '../context/ToastContext';
 import { telHref, groupByService } from '../utils/ussd';
 
 const EMPTY = { service: '', label: '', code: '' };

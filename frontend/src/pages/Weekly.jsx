@@ -2,18 +2,24 @@ import { useEffect, useState } from 'react';
 import client from '../api/client';
 import { useDataRefresh } from '../context/DataRefreshContext';
 import DayTransactionsModal from '../components/DayTransactionsModal';
+import { TableSkeleton } from '../components/Skeleton';
+import { formatMoney } from '../utils/currency';
 
 const today = new Date();
 
 export default function Weekly() {
   const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [year, setYear] = useState(today.getFullYear());
   const [selectedDate, setSelectedDate] = useState(null);
   const { version, bump } = useDataRefresh();
 
   useEffect(() => {
-    client.get('/transactions/weekly/', { params: { month, year } }).then(({ data }) => setData(data));
+    setLoading(true);
+    client.get('/transactions/weekly/', { params: { month, year } })
+      .then(({ data }) => setData(data))
+      .finally(() => setLoading(false));
   }, [month, year, version]);
 
   function changeMonth(delta) {
@@ -30,37 +36,42 @@ export default function Weekly() {
       <div className="page-header">
         <div>
           <h1>Weekly Breakdown</h1>
-          <p>Monday-Friday spending, grouped by week. Click a day to add or edit transactions.</p>
+          <p>Full Monday–Sunday spending grid grouped by week. Click any day to view or record expenses.</p>
         </div>
         <div className="filter-bar">
           <button className="secondary" onClick={() => changeMonth(-1)}>‹</button>
-          <span>{month}/{year}</span>
+          <span>{String(month).padStart(2, '0')}/{year}</span>
           <button className="secondary" onClick={() => changeMonth(1)}>›</button>
         </div>
       </div>
 
-      {!data ? (
-        <div className="loading">Loading...</div>
+      {loading || !data ? (
+        <TableSkeleton rows={4} />
       ) : (
         <div className="weekly-list">
           {data.weeks.map((week) => (
             <div key={week.label} className="week-card">
               <div className="week-card-header">
                 <h3>{week.label}</h3>
-                <strong>{Number(week.total).toFixed(2)}</strong>
+                <strong className="week-total-pill">{formatMoney(week.total)}</strong>
               </div>
               <div className="week-grid">
-                {week.days.map((day) => (
-                  <button
-                    type="button"
-                    key={day.date}
-                    className={`week-day ${Number(day.total) > 0 ? 'has-spend' : ''}`}
-                    onClick={() => setSelectedDate(day.date)}
-                  >
-                    <span>{day.weekday.slice(0, 3)}</span>
-                    <strong>{Number(day.total).toFixed(0)}</strong>
-                  </button>
-                ))}
+                {week.days.map((day) => {
+                  const hasSpend = Number(day.total) > 0;
+                  return (
+                    <button
+                      type="button"
+                      key={day.date}
+                      className={`week-day ${hasSpend ? 'has-spend' : ''}`}
+                      onClick={() => setSelectedDate(day.date)}
+                    >
+                      <span className="week-day-name">{day.weekday.slice(0, 3)}</span>
+                      <strong className="week-day-amt">
+                        {hasSpend ? formatMoney(day.total) : '—'}
+                      </strong>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}

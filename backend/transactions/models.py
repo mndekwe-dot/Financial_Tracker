@@ -24,6 +24,11 @@ class Transaction(models.Model):
 
     class Meta:
         ordering = ['-date', '-created_at']
+        indexes = [
+            models.Index(fields=['user', 'date']),
+            models.Index(fields=['user', 'type']),
+            models.Index(fields=['user', 'category']),
+        ]
 
     def __str__(self):
         return f'{self.type} {self.amount} on {self.date}'

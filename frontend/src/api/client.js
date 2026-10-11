@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Dev: talk to the local Django server. Production: same origin as the page.
-const BASE_URL = import.meta.env.DEV ? 'http://127.0.0.1:8002/api' : '/api';
+// Dev: talk to the local Django server (port 8000 by default). Production: same origin as the page.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : '/api');
 
 const QUEUE_KEY = 'offline-queue';
 const MUTATING_METHODS = ['post', 'put', 'patch', 'delete'];

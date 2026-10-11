@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, Check, X } from 'lucide-react';
 import client from '../api/client';
 import { useDataRefresh } from '../context/DataRefreshContext';
+import { formatMoney } from '../utils/currency';
 
 export default function WalletCard() {
   const [wallet, setWallet] = useState(null);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
-  const { version } = useDataRefresh();
+  const { version, bump } = useDataRefresh();
 
   function load() {
     client.get('/wallet/').then(({ data }) => setWallet(data));
@@ -27,20 +28,24 @@ export default function WalletCard() {
       setWallet(data);
     }
     setEditing(false);
+    bump();
   }
 
   if (!wallet) return null;
 
   return (
-    <div className="wallet-card">
+    <div className="wallet-card elevated-wallet">
       <div className="wallet-card-top">
-        <span>Remaining balance</span>
-        {!editing && (
-          <button onClick={startEdit}>
-            <Pencil size={13} style={{ marginRight: 4, verticalAlign: -2 }} />
-            Depot: {Number(wallet.starting_balance).toFixed(2)}
+        <div className="wallet-label-group">
+          <span className="wallet-pill-label">Total Balance (Depot)</span>
+          <span className="wallet-subtitle">Calculated from opening baseline & transactions</span>
+        </div>
+        {!editing ? (
+          <button className="depot-edit-pill" onClick={startEdit} title="Adjust starting depot baseline">
+            <Pencil size={12} />
+            <span>Depot: {formatMoney(wallet.starting_balance)}</span>
           </button>
-        )}
+        ) : null}
       </div>
 
       {editing ? (
@@ -50,19 +55,35 @@ export default function WalletCard() {
             step="0.01"
             value={value}
             onChange={(e) => setValue(e.target.value)}
+            placeholder="Starting balance"
             autoFocus
           />
-          <button type="submit">Save</button>
-          <button type="button" className="secondary" onClick={() => setEditing(false)}>Cancel</button>
+          <button type="submit" className="save-btn" title="Save depot">
+            <Check size={16} /> Save
+          </button>
+          <button type="button" className="secondary cancel-btn" onClick={() => setEditing(false)} title="Cancel">
+            <X size={16} />
+          </button>
         </form>
       ) : (
-        <div className="wallet-remaining">{Number(wallet.remaining).toFixed(2)}</div>
+        <div className="wallet-hero-amount">
+          <span className="wallet-remaining">{formatMoney(wallet.remaining)}</span>
+        </div>
       )}
 
       <div className="wallet-breakdown">
-        <span>With loans included<b>{Number(wallet.remaining_with_loans).toFixed(2)}</b></span>
-        <span>Owed to me<b>{Number(wallet.owed_to_me).toFixed(2)}</b></span>
-        <span>I owe<b>{Number(wallet.i_owe).toFixed(2)}</b></span>
+        <div className="breakdown-item">
+          <span className="breakdown-title">With Loans Factored</span>
+          <b className="breakdown-val highlight">{formatMoney(wallet.remaining_with_loans)}</b>
+        </div>
+        <div className="breakdown-item">
+          <span className="breakdown-title">Owed to Me</span>
+          <b className="breakdown-val income">{formatMoney(wallet.owed_to_me)}</b>
+        </div>
+        <div className="breakdown-item">
+          <span className="breakdown-title">I Owe (Debts)</span>
+          <b className="breakdown-val expense">{formatMoney(wallet.i_owe)}</b>
+        </div>
       </div>
     </div>
   );
