@@ -32,3 +32,4 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(recover_ndekwe, reverse_code=migrations.RunPython.noop),
     ]
+
