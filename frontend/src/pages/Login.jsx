@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import InstallAppButton from '../components/InstallAppButton';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -50,6 +51,9 @@ export default function Login() {
         <p>
           No account? <Link to="/register">Register</Link>
         </p>
+        <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.8rem', display: 'flex', justifyContent: 'center' }}>
+          <InstallAppButton />
+        </div>
       </form>
     </div>
   );
