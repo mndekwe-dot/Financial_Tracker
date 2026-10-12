@@ -154,7 +154,9 @@ export default function Navbar() {
         {/* User, Search, Theme & Actions */}
         <div className="navbar-user">
           <span className="navbar-username desktop-only">{user?.username}</span>
-          <InstallAppButton className="nav-install-btn desktop-only" />
+          <span className="desktop-only">
+            <InstallAppButton className="nav-install-btn" />
+          </span>
           <Link to="/search" className="secondary icon-btn" title="Search" aria-label="Search">
             <Search size={16} />
           </Link>

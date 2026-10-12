@@ -27,3 +27,4 @@ class CaseInsensitiveModelBackend(ModelBackend):
         if user and user.check_password(password) and self.user_can_authenticate(user):
             return user
         return None
+
