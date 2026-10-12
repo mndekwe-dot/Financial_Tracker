@@ -7,6 +7,7 @@ export default function Register() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passphrase, setPassphrase] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { register } = useAuth();
@@ -17,7 +18,7 @@ export default function Register() {
     setError('');
     setSubmitting(true);
     try {
-      await register(username, email, password);
+      await register(username, email, password, passphrase);
       navigate('/');
     } catch (err) {
       const data = err.response?.data;
@@ -39,12 +40,24 @@ export default function Register() {
           <input value={username} onChange={(e) => setUsername(e.target.value)} required />
         </label>
         <label>
-          Email
+          Email (optional)
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label>
           Password
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </label>
+        <label>
+          Recovery Passphrase (recommended)
+          <input
+            type="text"
+            value={passphrase}
+            onChange={(e) => setPassphrase(e.target.value)}
+            placeholder="e.g. blue mountain elephant river"
+          />
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.2rem', fontWeight: 'normal' }}>
+            A secret phrase of 3-4 words used to reset your password without email.
+          </span>
         </label>
         <button type="submit" disabled={submitting}>
           {submitting ? 'Creating...' : 'Register'}

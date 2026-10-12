@@ -57,3 +57,56 @@ class PasswordResetTests(TestCase):
             'new_password': 'BrandNewPassword999!',
         })
         self.assertEqual(response.status_code, 400)
+
+
+class PassphraseSecurityTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='bob',
+            email='bob@example.com',
+            password='oldpassword123',
+        )
+
+    def test_set_and_reset_via_passphrase(self):
+        self.client.force_authenticate(user=self.user)
+        # Set recovery passphrase
+        res = self.client.post('/api/auth/set-passphrase/', {
+            'current_password': 'oldpassword123',
+            'passphrase': 'blue mountain elephant river',
+        })
+        self.assertEqual(res.status_code, 200)
+
+        # Logout / unauthenticated client
+        self.client.force_authenticate(user=None)
+
+        # Reset password using the passphrase
+        res = self.client.post('/api/auth/passphrase-reset/', {
+            'username': 'bob',
+            'passphrase': '  Blue Mountain Elephant River  ', # test normalization
+            'new_password': 'BrandNewPassword888!',
+        })
+        self.assertEqual(res.status_code, 200)
+
+        # Verify login with new password
+        login_res = self.client.post('/api/auth/login/', {
+            'username': 'bob',
+            'password': 'BrandNewPassword888!',
+        })
+        self.assertEqual(login_res.status_code, 200)
+        self.assertIn('access', login_res.data)
+
+    def test_reset_fails_with_wrong_passphrase(self):
+        self.client.force_authenticate(user=self.user)
+        self.client.post('/api/auth/set-passphrase/', {
+            'current_password': 'oldpassword123',
+            'passphrase': 'correct secret phrase',
+        })
+        self.client.force_authenticate(user=None)
+
+        res = self.client.post('/api/auth/passphrase-reset/', {
+            'username': 'bob',
+            'passphrase': 'wrong secret phrase',
+            'new_password': 'BrandNewPassword888!',
+        })
+        self.assertEqual(res.status_code, 400)

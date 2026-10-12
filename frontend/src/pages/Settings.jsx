@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useDataRefresh } from '../context/DataRefreshContext';
 import ChangePasswordModal from '../components/ChangePasswordModal';
+import SetPassphraseModal from '../components/SetPassphraseModal';
 import UssdManager from '../components/UssdManager';
 import InstallAppButton from '../components/InstallAppButton';
 import { getTheme, applyTheme } from '../utils/theme';
@@ -26,6 +27,8 @@ export default function Settings() {
   const [profile, setProfile] = useState({ username: user?.username || '', email: user?.email || '' });
   const [savingProfile, setSavingProfile] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showPassphrase, setShowPassphrase] = useState(false);
+  const [hasPassphrase, setHasPassphrase] = useState(Boolean(user?.has_passphrase));
   const [theme, setTheme] = useState(getTheme());
   const [currency, setCurrencyState] = useState(getCurrency());
   const [importing, setImporting] = useState(false);
@@ -129,8 +132,33 @@ export default function Settings() {
 
         <section className="settings-card">
           <h2><KeyRound size={17} /> Security</h2>
-          <p className="settings-note">Change the password you use to sign in.</p>
-          <button type="button" className="secondary" onClick={() => setShowPassword(true)}>Change password</button>
+          <p className="settings-note">Change your password or manage recovery options.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <button type="button" className="secondary" onClick={() => setShowPassword(true)}>
+              Change password
+            </button>
+            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.6rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Recovery Passphrase</span>
+                <span style={{
+                  fontSize: '0.75rem',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '12px',
+                  background: hasPassphrase ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  color: hasPassphrase ? 'var(--color-success, #22c55e)' : 'var(--color-danger, #ef4444)',
+                  fontWeight: 600,
+                }}>
+                  {hasPassphrase ? 'Active' : 'Not set'}
+                </span>
+              </div>
+              <p className="settings-note" style={{ margin: '0 0 0.5rem' }}>
+                Reset your password without email using a memorable secret phrase.
+              </p>
+              <button type="button" className="secondary" onClick={() => setShowPassphrase(true)}>
+                {hasPassphrase ? 'Update passphrase' : 'Set recovery passphrase'}
+              </button>
+            </div>
+          </div>
         </section>
 
         <section className="settings-card">
@@ -189,6 +217,12 @@ export default function Settings() {
       </div>
 
       <ChangePasswordModal open={showPassword} onClose={() => setShowPassword(false)} />
+      <SetPassphraseModal
+        open={showPassphrase}
+        onClose={() => setShowPassphrase(false)}
+        hasExisting={hasPassphrase}
+        onUpdated={() => setHasPassphrase(true)}
+      />
     </div>
   );
 }

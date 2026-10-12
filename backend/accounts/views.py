@@ -11,15 +11,57 @@ from rest_framework.views import APIView
 
 from .serializers import (
     ChangePasswordSerializer,
+    PassphraseResetSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     ProfileSerializer,
     RegisterSerializer,
+    SetPassphraseSerializer,
     UserSerializer,
 )
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+class SetPassphraseView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = SetPassphraseSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'detail': 'Recovery passphrase set successfully.'})
+
+
+class PassphraseResetView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PassphraseResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        username = serializer.validated_data['username'].strip()
+        passphrase = serializer.validated_data['passphrase']
+        new_password = serializer.validated_data['new_password']
+
+        try:
+            user = User.objects.get(username__iexact=username, is_active=True)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'Invalid username or passphrase.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not hasattr(user, 'security') or not user.security.check_passphrase(passphrase):
+            return Response(
+                {'detail': 'Invalid username or passphrase.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(new_password)
+        user.save()
+        return Response({'detail': 'Password has been reset successfully. You can now log in.'})
 
 
 class RegisterView(generics.CreateAPIView):

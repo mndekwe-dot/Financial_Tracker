@@ -35,8 +35,12 @@ export function AuthProvider({ children }) {
     setUser(me);
   }
 
-  async function register(username, email, password) {
-    await client.post('/auth/register/', { username, email, password });
+  async function register(username, email, password, passphrase = '') {
+    const payload = { username, email, password };
+    if (passphrase && passphrase.trim()) {
+      payload.passphrase = passphrase.trim();
+    }
+    await client.post('/auth/register/', payload);
     await login(username, password);
   }
 
