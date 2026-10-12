@@ -25,7 +25,7 @@ export default defineConfig(({ command }) => ({
         theme_color: '#4f46e5',
         icons: [
           {
-            src: command === 'build' ? '/static/favicon.svg' : '/favicon.svg',
+            src: (process.env.VITE_BASE_PATH || (command === 'build' ? '/static/' : '/')) + 'favicon.svg',
             sizes: '192x192 512x512 any',
             type: 'image/svg+xml',
             purpose: 'any maskable',
@@ -33,7 +33,7 @@ export default defineConfig(({ command }) => ({
         ],
       },
       workbox: {
-        navigateFallback: command === 'build' ? '/static/index.html' : '/index.html',
+        navigateFallback: (process.env.VITE_BASE_PATH || (command === 'build' ? '/static/' : '/')) + 'index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/admin/],
         runtimeCaching: [
           {
@@ -60,8 +60,8 @@ export default defineConfig(({ command }) => ({
       },
     }),
   ],
-  // Production builds are served by Django/WhiteNoise under /static/
-  base: command === 'build' ? '/static/' : '/',
+  // When deployed to Vercel/standalone frontend, base is '/'. When served by Django/WhiteNoise, base is '/static/'.
+  base: process.env.VITE_BASE_PATH || (command === 'build' ? '/static/' : '/'),
   server: {
     port: 5176,
   },
