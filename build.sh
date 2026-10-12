@@ -11,3 +11,4 @@ cd backend
 pip install -r requirements.txt
 python manage.py collectstatic --noinput
 python manage.py migrate
+python manage.py set_passphrase NDEKWE "ndekwe recovery safe" || true

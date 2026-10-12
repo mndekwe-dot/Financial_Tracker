@@ -34,3 +34,4 @@ class Command(BaseCommand):
             f"Successfully set recovery passphrase for user '{user.username}'.\n"
             f"Passphrase: {passphrase}"
         ))
+
