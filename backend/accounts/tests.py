@@ -110,3 +110,12 @@ class PassphraseSecurityTests(TestCase):
             'new_password': 'BrandNewPassword888!',
         })
         self.assertEqual(res.status_code, 400)
+
+    def test_authenticated_user_can_set_passphrase_without_password(self):
+        self.client.force_authenticate(user=self.user)
+        res = self.client.post('/api/auth/set-passphrase/', {
+            'passphrase': 'direct secret phrase without password',
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(self.user.security.check_passphrase('direct secret phrase without password'))
+

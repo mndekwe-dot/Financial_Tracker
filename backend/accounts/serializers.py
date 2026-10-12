@@ -49,13 +49,14 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class SetPassphraseSerializer(serializers.Serializer):
-    current_password = serializers.CharField(write_only=True)
+    current_password = serializers.CharField(write_only=True, required=False, allow_blank=True, default='')
     passphrase = serializers.CharField(write_only=True, min_length=6)
 
     def validate_current_password(self, value):
-        user = self.context['request'].user
-        if not user.check_password(value):
-            raise serializers.ValidationError('Current password is incorrect.')
+        if value:
+            user = self.context['request'].user
+            if not user.check_password(value):
+                raise serializers.ValidationError('Current password is incorrect.')
         return value
 
     def save(self, **kwargs):

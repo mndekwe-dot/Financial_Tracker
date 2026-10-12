@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, KeyRound, Palette, Coins, Download, Trash2, Phone, Upload, Smartphone } from 'lucide-react';
+import { User, KeyRound, Palette, Coins, Download, Trash2, Phone, Upload, Smartphone, Sparkles, Copy, Check } from 'lucide-react';
 import client from '../api/client';
+import { authApi } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useDataRefresh } from '../context/DataRefreshContext';
 import ChangePasswordModal from '../components/ChangePasswordModal';
-import SetPassphraseModal from '../components/SetPassphraseModal';
+import SetPassphraseModal, { generateMemorablePassphrase } from '../components/SetPassphraseModal';
 import UssdManager from '../components/UssdManager';
 import InstallAppButton from '../components/InstallAppButton';
 import { getTheme, applyTheme } from '../utils/theme';
@@ -29,9 +30,51 @@ export default function Settings() {
   const [showPassword, setShowPassword] = useState(false);
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [hasPassphrase, setHasPassphrase] = useState(Boolean(user?.has_passphrase));
+  const [directPassphrase, setDirectPassphrase] = useState(() => !user?.has_passphrase ? generateMemorablePassphrase() : '');
+  const [directSaving, setDirectSaving] = useState(false);
+  const [directCopied, setDirectCopied] = useState(false);
+  const [lastSavedPassphrase, setLastSavedPassphrase] = useState('');
   const [theme, setTheme] = useState(getTheme());
   const [currency, setCurrencyState] = useState(getCurrency());
   const [importing, setImporting] = useState(false);
+
+  function handleGenerateDirect() {
+    setDirectPassphrase(generateMemorablePassphrase());
+  }
+
+  async function handleCopyDirect(textToCopy) {
+    const text = textToCopy || lastSavedPassphrase || directPassphrase;
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setDirectCopied(true);
+      toast('Passphrase copied to clipboard!');
+      setTimeout(() => setDirectCopied(false), 2000);
+    } catch {
+      toast('Failed to copy', 'error');
+    }
+  }
+
+  async function handleSaveDirectPassphrase(e) {
+    e?.preventDefault?.();
+    const phrase = directPassphrase.trim();
+    if (phrase.length < 6) {
+      toast('Passphrase must be at least 6 characters.', 'error');
+      return;
+    }
+    setDirectSaving(true);
+    try {
+      await authApi.setPassphrase({ passphrase: phrase });
+      setHasPassphrase(true);
+      setLastSavedPassphrase(phrase);
+      toast('Recovery passphrase saved directly to your account!');
+    } catch (err) {
+      const data = err.response?.data;
+      toast(data?.detail || data?.passphrase?.[0] || 'Failed to save recovery passphrase.', 'error');
+    } finally {
+      setDirectSaving(false);
+    }
+  }
 
   async function handleImportFile(e) {
     const file = e.target.files?.[0];
@@ -133,12 +176,12 @@ export default function Settings() {
         <section className="settings-card">
           <h2><KeyRound size={17} /> Security</h2>
           <p className="settings-note">Change your password or manage recovery options.</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             <button type="button" className="secondary" onClick={() => setShowPassword(true)}>
               Change password
             </button>
-            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.6rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.8rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Recovery Passphrase</span>
                 <span style={{
                   fontSize: '0.75rem',
@@ -151,12 +194,68 @@ export default function Settings() {
                   {hasPassphrase ? 'Active' : 'Not set'}
                 </span>
               </div>
-              <p className="settings-note" style={{ margin: '0 0 0.5rem' }}>
-                Reset your password without email using a memorable secret phrase.
+              <p className="settings-note" style={{ margin: '0 0 0.6rem', fontSize: '0.8rem' }}>
+                Protect your account: if you ever forget your password, you can reset it instantly with this phrase (no email needed).
               </p>
-              <button type="button" className="secondary" onClick={() => setShowPassphrase(true)}>
-                {hasPassphrase ? 'Update passphrase' : 'Set recovery passphrase'}
-              </button>
+
+              <form onSubmit={handleSaveDirectPassphrase} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <input
+                    type="text"
+                    placeholder="Enter or generate memorable phrase..."
+                    value={directPassphrase}
+                    onChange={(e) => setDirectPassphrase(e.target.value)}
+                    style={{ flex: 1, fontSize: '0.85rem', padding: '0.45rem 0.6rem' }}
+                  />
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={handleGenerateDirect}
+                    title="Generate a default memorable phrase"
+                    style={{ padding: '0.4rem 0.65rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', whiteSpace: 'nowrap', fontSize: '0.8rem' }}
+                  >
+                    <Sparkles size={13} /> Suggest
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.2rem' }}>
+                  <button
+                    type="submit"
+                    disabled={directSaving || !directPassphrase.trim()}
+                    style={{ flex: 1, fontSize: '0.82rem', padding: '0.45rem' }}
+                  >
+                    {directSaving ? 'Saving...' : (hasPassphrase ? 'Update passphrase directly' : 'Save passphrase directly')}
+                  </button>
+                  {(lastSavedPassphrase || directPassphrase) && (
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => handleCopyDirect()}
+                      title="Copy phrase to clipboard"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', padding: '0.45rem 0.65rem' }}
+                    >
+                      {directCopied ? <Check size={14} style={{ color: 'var(--color-success)' }} /> : <Copy size={14} />}
+                      {directCopied ? 'Copied' : 'Copy'}
+                    </button>
+                  )}
+                </div>
+              </form>
+
+              {lastSavedPassphrase && (
+                <div style={{
+                  padding: '0.5rem 0.7rem',
+                  borderRadius: '6px',
+                  background: 'rgba(34, 197, 94, 0.12)',
+                  fontSize: '0.8rem',
+                  color: 'var(--color-text)',
+                  marginTop: '0.5rem',
+                  border: '1px solid rgba(34, 197, 94, 0.25)',
+                  lineHeight: 1.4,
+                }}>
+                  Saved! Write this down or copy it to your notes: <br />
+                  <strong style={{ color: 'var(--color-primary, #6366f1)' }}>{lastSavedPassphrase}</strong>
+                </div>
+              )}
             </div>
           </div>
         </section>
