@@ -12,6 +12,8 @@ import './App.css';
 // Lazy-loaded routes for code-splitting
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Transactions = lazy(() => import('./pages/Transactions'));
 const Categories = lazy(() => import('./pages/Categories'));
@@ -52,6 +54,8 @@ export default function App() {
                 <Routes>
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route element={<ProtectedRoute />}>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/transactions" element={<Transactions />} />

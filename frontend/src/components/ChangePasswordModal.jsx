@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import client from '../api/client';
+import { authApi } from '../api/auth';
 import { useToast } from '../context/ToastContext';
 
 const EMPTY = { current_password: '', new_password: '', confirm: '' };
@@ -31,7 +31,7 @@ export default function ChangePasswordModal({ open, onClose }) {
     }
     setBusy(true);
     try {
-      await client.post('/auth/change-password/', {
+      await authApi.changePassword({
         current_password: form.current_password,
         new_password: form.new_password,
       });

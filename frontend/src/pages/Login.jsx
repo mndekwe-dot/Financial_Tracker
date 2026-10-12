@@ -36,7 +36,12 @@ export default function Login() {
           <input value={username} onChange={(e) => setUsername(e.target.value)} required />
         </label>
         <label>
-          Password
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Password</span>
+            <Link to="/forgot-password" style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--color-primary)' }}>
+              Forgot password?
+            </Link>
+          </div>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </label>
         <button type="submit" disabled={submitting}>
