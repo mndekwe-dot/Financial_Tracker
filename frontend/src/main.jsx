@@ -16,6 +16,10 @@ createRoot(document.getElementById('root')).render(
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     const swPath = import.meta.env.PROD ? '/static/sw.js' : '/sw.js';
-    navigator.serviceWorker.register(swPath, { scope: '/' }).catch(() => {});
+    navigator.serviceWorker.register(swPath, { scope: '/' })
+      .then((reg) => {
+        reg.update();
+      })
+      .catch(() => {});
   });
 }
